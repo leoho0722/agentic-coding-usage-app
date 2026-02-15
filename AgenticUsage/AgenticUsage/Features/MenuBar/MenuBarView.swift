@@ -4,6 +4,7 @@ import SwiftUI
 
 struct MenuBarView: View {
     @Bindable var store: StoreOf<MenuBarFeature>
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -80,10 +81,7 @@ struct MenuBarView: View {
     @ViewBuilder
     private func copilotCardHeader(tool: ToolKind, isExpanded: Bool) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: tool.iconName)
-                .font(.body)
-                .foregroundStyle(.primary)
-                .frame(width: 20)
+            toolIcon(tool)
 
             Text(tool.displayName)
                 .font(.subheadline)
@@ -281,10 +279,8 @@ struct MenuBarView: View {
     @ViewBuilder
     private func comingSoonCard(tool: ToolKind) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: tool.iconName)
-                .font(.body)
-                .foregroundStyle(.tertiary)
-                .frame(width: 20)
+            toolIcon(tool)
+                .opacity(0.4)
 
             Text(tool.displayName)
                 .font(.subheadline)
@@ -320,6 +316,27 @@ struct MenuBarView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+
+    // MARK: - Tool Icon
+
+    /// Renders the tool's asset catalog image, applying its brand tint color when defined.
+    @ViewBuilder
+    private func toolIcon(_ tool: ToolKind) -> some View {
+        if let tint = tool.tintColor {
+            Image(tool.imageName(for: colorScheme))
+                .renderingMode(.template)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 16, height: 16)
+                .foregroundStyle(tint)
+        } else {
+            Image(tool.imageName(for: colorScheme))
+                .renderingMode(.original)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 16, height: 16)
+        }
     }
 
     // MARK: - Plan Badge

@@ -1,3 +1,5 @@
+import SwiftUI
+
 /// Represents an agentic coding tool supported (or planned) by the app.
 enum ToolKind: String, CaseIterable, Identifiable, Sendable, Equatable {
     case copilot
@@ -17,13 +19,25 @@ enum ToolKind: String, CaseIterable, Identifiable, Sendable, Equatable {
         }
     }
 
-    /// SF Symbol name for the tool icon.
-    var iconName: String {
+    /// Asset catalog image name for the tool icon.
+    /// Copilot uses separate light/dark assets; others are appearance-independent.
+    func imageName(for colorScheme: ColorScheme) -> String {
         switch self {
-        case .copilot: "chevron.left.forwardslash.chevron.right"
-        case .claudeCode: "brain.head.profile"
-        case .codex: "terminal"
-        case .antigravity: "atom"
+        case .copilot:
+            colorScheme == .dark ? "github-copilot-dark" : "github-copilot-light"
+        case .claudeCode: "claude"
+        case .codex: "openai-codex"
+        case .antigravity: "google-antigravity"
+        }
+    }
+
+    /// Optional brand tint color (from Asset catalog Brand Color set).
+    /// `nil` means the image should be rendered as-is (original / template default).
+    var tintColor: Color? {
+        switch self {
+        case .claudeCode: Color("Claude", bundle: .main)
+        case .antigravity: Color("Antigravity", bundle: .main)
+        case .copilot, .codex: nil
         }
     }
 
