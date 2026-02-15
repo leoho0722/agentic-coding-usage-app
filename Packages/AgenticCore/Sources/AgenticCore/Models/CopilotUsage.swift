@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - API Response Models
+// MARK: - Billing API Response Models (kept for backwards compatibility)
 
 /// Top-level response from the GitHub premium request usage API.
 /// Endpoint: `GET /users/{username}/settings/billing/premium_request/usage`
@@ -77,37 +77,91 @@ public struct UsageItem: Codable, Sendable {
 
 // MARK: - Computed Usage Model
 
-/// Aggregated Copilot premium request usage for display.
+/// Aggregated Copilot usage summary for display.
+/// Now supports both the billing API (absolute numbers) and the internal API (percentage-based).
 public struct CopilotUsageSummary: Equatable, Sendable {
-    /// Total premium requests used this billing cycle.
-    public let premiumRequestsUsed: Int
-    /// The user's plan limit.
-    public let planLimit: Int
-    /// The plan type.
+    /// The auto-detected plan from the internal API.
     public let plan: CopilotPlan
-    /// Days remaining until the usage counter resets (1st of next month UTC).
+    /// The plan's monthly premium request limit.
+    public let planLimit: Int
+    /// Days remaining until the usage counter resets.
     public let daysUntilReset: Int
 
+    // MARK: - Paid tier fields (from quota_snapshots)
+
+    /// Percentage of premium requests remaining (0.0–1.0). Nil for free tier.
+    public let premiumPercentRemaining: Double?
+    /// Percentage of chat quota remaining (0.0–1.0). Nil if not available.
+    public let chatPercentRemaining: Double?
+
+    // MARK: - Free tier fields (from limited_user_quotas)
+
+    /// Chat requests remaining (free tier). Nil for paid tier.
+    public let freeChatRemaining: Int?
+    /// Chat requests total (free tier). Nil for paid tier.
+    public let freeChatTotal: Int?
+    /// Completions remaining (free tier). Nil for paid tier.
+    public let freeCompletionsRemaining: Int?
+    /// Completions total (free tier). Nil for paid tier.
+    public let freeCompletionsTotal: Int?
+
     public init(
-        premiumRequestsUsed: Int,
-        planLimit: Int,
         plan: CopilotPlan,
-        daysUntilReset: Int
+        planLimit: Int,
+        daysUntilReset: Int,
+        premiumPercentRemaining: Double? = nil,
+        chatPercentRemaining: Double? = nil,
+        freeChatRemaining: Int? = nil,
+        freeChatTotal: Int? = nil,
+        freeCompletionsRemaining: Int? = nil,
+        freeCompletionsTotal: Int? = nil
     ) {
-        self.premiumRequestsUsed = premiumRequestsUsed
-        self.planLimit = planLimit
         self.plan = plan
+        self.planLimit = planLimit
         self.daysUntilReset = daysUntilReset
+        self.premiumPercentRemaining = premiumPercentRemaining
+        self.chatPercentRemaining = chatPercentRemaining
+        self.freeChatRemaining = freeChatRemaining
+        self.freeChatTotal = freeChatTotal
+        self.freeCompletionsRemaining = freeCompletionsRemaining
+        self.freeCompletionsTotal = freeCompletionsTotal
     }
 
-    /// Usage as a fraction (0.0 – 1.0+). Can exceed 1.0 if over limit.
+    /// Whether this is a free tier user.
+    public var isFreeTier: Bool {
+        plan == .free
+    }
+
+    /// Usage percentage for display (0.0–1.0). Used portion, not remaining.
+    /// For paid tier: derived from `premiumPercentRemaining`.
+    /// For free tier: derived from chat remaining/total.
     public var usagePercentage: Double {
-        guard planLimit > 0 else { return 0 }
-        return Double(premiumRequestsUsed) / Double(planLimit)
+        if let premiumPercentRemaining {
+            return max(0, min(1.0, (100.0 - premiumPercentRemaining) / 100.0))
+        }
+        if let remaining = freeChatRemaining, let total = freeChatTotal, total > 0 {
+            return max(0, min(1.0, Double(total - remaining) / Double(total)))
+        }
+        return 0
     }
 
-    /// Remaining premium requests.
+    /// Estimated premium requests used (for paid tiers).
+    public var premiumRequestsUsed: Int {
+        if let premiumPercentRemaining {
+            let usedPercent = max(0, min(100, 100.0 - premiumPercentRemaining))
+            return Int(round(Double(planLimit) * usedPercent / 100.0))
+        }
+        return 0
+    }
+
+    /// Estimated remaining premium requests (for paid tiers).
     public var remaining: Int {
-        max(0, planLimit - premiumRequestsUsed)
+        if let premiumPercentRemaining {
+            return Int(round(Double(planLimit) * max(0, min(100, premiumPercentRemaining)) / 100.0))
+        }
+        if let remaining = freeChatRemaining {
+            return remaining
+        }
+        return planLimit
     }
 }

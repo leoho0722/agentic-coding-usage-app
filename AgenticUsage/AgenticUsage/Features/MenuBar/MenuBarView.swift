@@ -92,11 +92,16 @@ struct MenuBarView: View {
     @ViewBuilder
     private func loggedInView(user: GitHubUser) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header
+            // Header with plan badge
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(user.name ?? user.login)
-                        .font(.headline)
+                    HStack(spacing: 6) {
+                        Text(user.name ?? user.login)
+                            .font(.headline)
+                        if let plan = store.detectedPlan {
+                            planBadge(plan: plan)
+                        }
+                    }
                     Text("@\(user.login)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -113,28 +118,6 @@ struct MenuBarView: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 10)
-
-            Divider()
-
-            // Plan picker
-            HStack {
-                Text("Plan:")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Picker("", selection: Binding(
-                    get: { store.selectedPlan },
-                    set: { store.send(.planChanged($0)) }
-                )) {
-                    ForEach(CopilotPlan.allCases, id: \.self) { plan in
-                        Text("\(plan.rawValue) (\(plan.limit))").tag(plan)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .controlSize(.small)
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
 
             Divider()
 
@@ -194,79 +177,173 @@ struct MenuBarView: View {
         }
     }
 
+    // MARK: - Plan Badge
+
+    @ViewBuilder
+    private func planBadge(plan: CopilotPlan) -> some View {
+        Text(plan.badgeLabel)
+            .font(.system(.caption2, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(planBadgeColor(for: plan), in: Capsule())
+    }
+
+    private func planBadgeColor(for plan: CopilotPlan) -> Color {
+        switch plan {
+        case .free: .gray
+        case .pro: .blue
+        case .proPlus: .purple
+        }
+    }
+
     // MARK: - Usage Summary
 
     @ViewBuilder
     private func usageSummaryView(summary: CopilotUsageSummary) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Progress bar
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Premium Requests")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                    Spacer()
-                    Text("\(summary.premiumRequestsUsed) / \(summary.planLimit)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(.quaternary)
-                            .frame(height: 8)
-
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(progressColor(for: summary.usagePercentage))
-                            .frame(
-                                width: min(
-                                    geometry.size.width,
-                                    geometry.size.width * summary.usagePercentage
-                                ),
-                                height: 8
-                            )
-                    }
-                }
-                .frame(height: 8)
-            }
-
-            // Stats row
-            HStack {
-                VStack(alignment: .leading) {
-                    Text("\(summary.remaining)")
-                        .font(.system(.title3, design: .rounded, weight: .semibold))
-                    Text("remaining")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                VStack(alignment: .center) {
-                    Text("\(Int(summary.usagePercentage * 100))%")
-                        .font(.system(.title3, design: .rounded, weight: .semibold))
-                        .foregroundStyle(progressColor(for: summary.usagePercentage))
-                    Text("used")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing) {
-                    Text("\(summary.daysUntilReset)")
-                        .font(.system(.title3, design: .rounded, weight: .semibold))
-                    Text("days left")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
+            if summary.isFreeTier {
+                freeTierUsageView(summary: summary)
+            } else {
+                paidTierUsageView(summary: summary)
             }
         }
         .padding()
     }
 
+    // MARK: - Paid Tier Usage
+
+    @ViewBuilder
+    private func paidTierUsageView(summary: CopilotUsageSummary) -> some View {
+        // Premium requests progress bar
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Premium Requests")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                Spacer()
+                Text("\(summary.premiumRequestsUsed) / \(summary.planLimit)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            progressBar(percentage: summary.usagePercentage)
+        }
+
+        // Stats row
+        HStack {
+            VStack(alignment: .leading) {
+                Text("\(summary.remaining)")
+                    .font(.system(.title3, design: .rounded, weight: .semibold))
+                Text("remaining")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            VStack(alignment: .center) {
+                Text("\(Int(summary.usagePercentage * 100))%")
+                    .font(.system(.title3, design: .rounded, weight: .semibold))
+                    .foregroundStyle(progressColor(for: summary.usagePercentage))
+                Text("used")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing) {
+                Text("\(summary.daysUntilReset)")
+                    .font(.system(.title3, design: .rounded, weight: .semibold))
+                Text("days left")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Free Tier Usage
+
+    @ViewBuilder
+    private func freeTierUsageView(summary: CopilotUsageSummary) -> some View {
+        // Chat quota
+        if let chatRemaining = summary.freeChatRemaining,
+           let chatTotal = summary.freeChatTotal, chatTotal > 0
+        {
+            let chatUsed = chatTotal - chatRemaining
+            let chatPercent = Double(chatUsed) / Double(chatTotal)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Chat")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                    Spacer()
+                    Text("\(chatUsed) / \(chatTotal)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                progressBar(percentage: chatPercent)
+            }
+        }
+
+        // Completions quota
+        if let compRemaining = summary.freeCompletionsRemaining,
+           let compTotal = summary.freeCompletionsTotal, compTotal > 0
+        {
+            let compUsed = compTotal - compRemaining
+            let compPercent = Double(compUsed) / Double(compTotal)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Completions")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                    Spacer()
+                    Text("\(compUsed) / \(compTotal)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                progressBar(percentage: compPercent)
+            }
+        }
+
+        // Days left
+        HStack {
+            Spacer()
+            VStack(alignment: .center) {
+                Text("\(summary.daysUntilReset)")
+                    .font(.system(.title3, design: .rounded, weight: .semibold))
+                Text("days until reset")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+    }
+
     // MARK: - Helpers
+
+    @ViewBuilder
+    private func progressBar(percentage: Double) -> some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(.quaternary)
+                    .frame(height: 8)
+
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(progressColor(for: percentage))
+                    .frame(
+                        width: min(
+                            geometry.size.width,
+                            geometry.size.width * percentage
+                        ),
+                        height: 8
+                    )
+            }
+        }
+        .frame(height: 8)
+    }
 
     private func progressColor(for percentage: Double) -> Color {
         switch percentage {

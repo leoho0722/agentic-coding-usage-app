@@ -11,7 +11,7 @@ struct MenuBarFeature {
     struct State: Equatable {
         var authState: AuthState = .loggedOut
         var usageSummary: CopilotUsageSummary?
-        var selectedPlan: CopilotPlan = .pro
+        var detectedPlan: CopilotPlan?
         var isLoading: Bool = false
         var errorMessage: String?
         var deviceFlowState: DeviceFlowState?
@@ -59,8 +59,6 @@ struct MenuBarFeature {
         case fetchUsage
         case usageResponse(CopilotUsageSummary)
         case usageFailed(String)
-        
-        case planChanged(CopilotPlan)
         
         case openVerificationURL
         case copyUserCode
@@ -156,32 +154,43 @@ struct MenuBarFeature {
             case .logoutCompleted:
                 state.authState = .loggedOut
                 state.usageSummary = nil
+                state.detectedPlan = nil
                 state.deviceFlowState = nil
                 return .none
                 
             case .fetchUsage:
-                guard let token = state.authState.accessToken,
-                      let user = state.authState.user
+                guard let token = state.authState.accessToken
                 else { return .none }
                 state.isLoading = true
                 state.errorMessage = nil
-                let plan = state.selectedPlan
-                let username = user.login
                 return .run { send in
                     @Dependency(\.gitHubAPIClient) var apiClient
-                    let period = DateUtils.currentBillingPeriod()
-                    let response = try await apiClient.fetchPremiumRequestUsage(
-                        token, username, period.year, period.month
-                    )
-                    let copilotUsage = response.usageItems
-                        .filter { $0.product == "Copilot" }
-                        .reduce(0) { $0 + $1.grossQuantity }
-                    let summary = CopilotUsageSummary(
-                        premiumRequestsUsed: copilotUsage,
-                        planLimit: plan.limit,
-                        plan: plan,
-                        daysUntilReset: DateUtils.daysUntilReset()
-                    )
+                    let status = try await apiClient.fetchCopilotStatus(token)
+                    let plan = CopilotPlan.fromAPIString(status.copilotPlan)
+                    let daysUntilReset = DateUtils.daysUntilReset()
+                    
+                    let summary: CopilotUsageSummary
+                    if plan == .free {
+                        // Free tier: use limited_user_quotas
+                        summary = CopilotUsageSummary(
+                            plan: plan,
+                            planLimit: plan.limit,
+                            daysUntilReset: daysUntilReset,
+                            freeChatRemaining: status.limitedUserQuotas?.chat,
+                            freeChatTotal: status.monthlyQuotas?.chat,
+                            freeCompletionsRemaining: status.limitedUserQuotas?.completions,
+                            freeCompletionsTotal: status.monthlyQuotas?.completions
+                        )
+                    } else {
+                        // Paid tier: use quota_snapshots
+                        summary = CopilotUsageSummary(
+                            plan: plan,
+                            planLimit: plan.limit,
+                            daysUntilReset: daysUntilReset,
+                            premiumPercentRemaining: status.quotaSnapshots?.premiumInteractions?.percentRemaining,
+                            chatPercentRemaining: status.quotaSnapshots?.chat?.percentRemaining
+                        )
+                    }
                     await send(.usageResponse(summary))
                 } catch: { error, send in
                     await send(.usageFailed(error.localizedDescription))
@@ -190,18 +199,12 @@ struct MenuBarFeature {
             case let .usageResponse(summary):
                 state.isLoading = false
                 state.usageSummary = summary
+                state.detectedPlan = summary.plan
                 return .none
                 
             case let .usageFailed(message):
                 state.isLoading = false
                 state.errorMessage = message
-                return .none
-                
-            case let .planChanged(plan):
-                state.selectedPlan = plan
-                if state.authState.isLoggedIn {
-                    return .send(.fetchUsage)
-                }
                 return .none
                 
             case .openVerificationURL:

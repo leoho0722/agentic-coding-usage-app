@@ -11,6 +11,16 @@ extension GitHubAPIClient: @retroactive TestDependencyKey {
         },
         fetchPremiumRequestUsage: { _, _, _, _ in
             PremiumRequestUsageResponse(usageItems: [])
+        },
+        fetchCopilotStatus: { _ in
+            CopilotStatusResponse(
+                copilotPlan: "copilot_for_individual_user",
+                quotaSnapshots: QuotaSnapshots(
+                    premiumInteractions: QuotaSnapshot(percentRemaining: 80.0),
+                    chat: QuotaSnapshot(percentRemaining: 90.0)
+                ),
+                quotaResetDate: nil
+            )
         }
     )
 }

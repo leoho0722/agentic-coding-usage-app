@@ -7,19 +7,27 @@ import Foundation
 public struct GitHubAPIClient: Sendable {
     /// Fetch the authenticated user's profile.
     public var fetchUser: @Sendable (_ accessToken: String) async throws -> GitHubUser
-    /// Fetch premium request usage for the current billing cycle.
+    /// Fetch premium request usage for the current billing cycle (billing API).
     public var fetchPremiumRequestUsage: @Sendable (
         _ accessToken: String, _ username: String, _ year: Int, _ month: Int
     ) async throws -> PremiumRequestUsageResponse
+    /// Fetch Copilot status including plan and quota snapshots (internal API).
+    public var fetchCopilotStatus: @Sendable (
+        _ accessToken: String
+    ) async throws -> CopilotStatusResponse
 
     public init(
         fetchUser: @escaping @Sendable (_ accessToken: String) async throws -> GitHubUser,
         fetchPremiumRequestUsage: @escaping @Sendable (
             _ accessToken: String, _ username: String, _ year: Int, _ month: Int
-        ) async throws -> PremiumRequestUsageResponse
+        ) async throws -> PremiumRequestUsageResponse,
+        fetchCopilotStatus: @escaping @Sendable (
+            _ accessToken: String
+        ) async throws -> CopilotStatusResponse
     ) {
         self.fetchUser = fetchUser
         self.fetchPremiumRequestUsage = fetchPremiumRequestUsage
+        self.fetchCopilotStatus = fetchCopilotStatus
     }
 }
 
@@ -42,6 +50,20 @@ extension GitHubAPIClient {
             try validateHTTPResponse(response, data: data)
             do {
                 return try JSONDecoder().decode(PremiumRequestUsageResponse.self, from: data)
+            } catch let decodingError {
+                let rawJSON = String(data: data, encoding: .utf8) ?? "<non-UTF8 data>"
+                throw GitHubAPIError.decodingFailed(
+                    underlyingError: decodingError,
+                    rawResponse: rawJSON
+                )
+            }
+        },
+        fetchCopilotStatus: { accessToken in
+            let request = GitHubEndpoint.copilotStatus.makeRequest(accessToken: accessToken)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            try validateHTTPResponse(response, data: data)
+            do {
+                return try JSONDecoder().decode(CopilotStatusResponse.self, from: data)
             } catch let decodingError {
                 let rawJSON = String(data: data, encoding: .utf8) ?? "<non-UTF8 data>"
                 throw GitHubAPIError.decodingFailed(

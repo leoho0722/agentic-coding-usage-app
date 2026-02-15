@@ -6,6 +6,8 @@ public enum GitHubEndpoint: Sendable {
     case user
     /// `GET /users/{username}/settings/billing/premium_request/usage?year=&month=`
     case premiumRequestUsage(username: String, year: Int, month: Int)
+    /// `GET /copilot_internal/user` — internal Copilot status (plan, quota snapshots).
+    case copilotStatus
 
     // MARK: - OAuth Device Flow
 
@@ -30,6 +32,9 @@ public enum GitHubEndpoint: Sendable {
             ]
             return components.url!
 
+        case .copilotStatus:
+            return URL(string: "https://api.github.com/copilot_internal/user")!
+
         case .deviceCode:
             return URL(string: "https://github.com/login/device/code")!
 
@@ -50,6 +55,17 @@ public enum GitHubEndpoint: Sendable {
                 request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
             }
             request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+
+        case .copilotStatus:
+            request.httpMethod = "GET"
+            if let accessToken {
+                request.setValue("token \(accessToken)", forHTTPHeaderField: "Authorization")
+            }
+            // The internal Copilot API requires editor-style headers.
+            request.setValue("vscode/1.96.2", forHTTPHeaderField: "Editor-Version")
+            request.setValue("copilot-chat/0.26.7", forHTTPHeaderField: "Editor-Plugin-Version")
+            request.setValue("GitHubCopilotChat/0.26.7", forHTTPHeaderField: "User-Agent")
+            request.setValue("2025-04-01", forHTTPHeaderField: "X-Github-Api-Version")
 
         case let .deviceCode(clientID):
             request.httpMethod = "POST"

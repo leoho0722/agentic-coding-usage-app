@@ -8,9 +8,6 @@ struct UsageCommand: AsyncParsableCommand {
         abstract: "Show your GitHub Copilot premium request usage for this month."
     )
 
-    @Option(name: .long, help: "Your Copilot plan: free, pro, or pro-plus.")
-    var plan: String = "pro"
-
     func run() async throws {
         let keychain = KeychainService.live
         let apiClient = GitHubAPIClient.live
@@ -21,57 +18,83 @@ struct UsageCommand: AsyncParsableCommand {
             throw ExitCode.failure
         }
 
-        // Resolve plan
-        let copilotPlan: CopilotPlan
-        switch plan.lowercased() {
-        case "free": copilotPlan = .free
-        case "pro": copilotPlan = .pro
-        case "pro-plus", "proplus", "pro+": copilotPlan = .proPlus
-        default:
-            print("Error: Unknown plan '\(plan)'. Use: free, pro, or pro-plus.")
-            throw ExitCode.failure
-        }
-
         // Fetch user
         let user = try await apiClient.fetchUser(token)
 
-        // Fetch usage
-        let period = DateUtils.currentBillingPeriod()
-        let response = try await apiClient.fetchPremiumRequestUsage(
-            token, user.login, period.year, period.month
-        )
+        // Fetch Copilot status (plan + usage) via internal API
+        let status = try await apiClient.fetchCopilotStatus(token)
+        let plan = CopilotPlan.fromAPIString(status.copilotPlan)
+        let daysUntilReset = DateUtils.daysUntilReset()
 
-        let totalUsed = response.usageItems
-            .filter { $0.product == "Copilot" }
-            .reduce(0) { $0 + $1.grossQuantity }
-
-        let summary = CopilotUsageSummary(
-            premiumRequestsUsed: totalUsed,
-            planLimit: copilotPlan.limit,
-            plan: copilotPlan,
-            daysUntilReset: DateUtils.daysUntilReset()
-        )
+        let summary: CopilotUsageSummary
+        if plan == .free {
+            summary = CopilotUsageSummary(
+                plan: plan,
+                planLimit: plan.limit,
+                daysUntilReset: daysUntilReset,
+                freeChatRemaining: status.limitedUserQuotas?.chat,
+                freeChatTotal: status.monthlyQuotas?.chat,
+                freeCompletionsRemaining: status.limitedUserQuotas?.completions,
+                freeCompletionsTotal: status.monthlyQuotas?.completions
+            )
+        } else {
+            summary = CopilotUsageSummary(
+                plan: plan,
+                planLimit: plan.limit,
+                daysUntilReset: daysUntilReset,
+                premiumPercentRemaining: status.quotaSnapshots?.premiumInteractions?.percentRemaining,
+                chatPercentRemaining: status.quotaSnapshots?.chat?.percentRemaining
+            )
+        }
 
         // Display
         printUsage(user: user, summary: summary)
     }
 
     private func printUsage(user: GitHubUser, summary: CopilotUsageSummary) {
-        let percentage = Int(summary.usagePercentage * 100)
         let barWidth = 30
-        let filledCount = min(barWidth, Int(Double(barWidth) * summary.usagePercentage))
-        let emptyCount = barWidth - filledCount
-        let bar = String(repeating: "#", count: filledCount) + String(repeating: "-", count: emptyCount)
 
         print()
-        print("  GitHub Copilot Premium Requests")
+        print("  GitHub Copilot Usage")
         print("  User: \(user.name ?? user.login) (@\(user.login))")
         print("  Plan: \(summary.plan.rawValue) (\(summary.planLimit) requests/month)")
         print()
-        print("  [\(bar)] \(percentage)%")
+
+        if summary.isFreeTier {
+            // Free tier: show chat and completions
+            if let chatRemaining = summary.freeChatRemaining,
+               let chatTotal = summary.freeChatTotal, chatTotal > 0
+            {
+                let chatUsed = chatTotal - chatRemaining
+                let chatPercent = Double(chatUsed) / Double(chatTotal)
+                let filled = min(barWidth, Int(Double(barWidth) * chatPercent))
+                let empty = barWidth - filled
+                let bar = String(repeating: "#", count: filled) + String(repeating: "-", count: empty)
+                print("  Chat:        [\(bar)] \(Int(chatPercent * 100))%")
+                print("               \(chatUsed) / \(chatTotal)  (\(chatRemaining) remaining)")
+            }
+            if let compRemaining = summary.freeCompletionsRemaining,
+               let compTotal = summary.freeCompletionsTotal, compTotal > 0
+            {
+                let compUsed = compTotal - compRemaining
+                let compPercent = Double(compUsed) / Double(compTotal)
+                let filled = min(barWidth, Int(Double(barWidth) * compPercent))
+                let empty = barWidth - filled
+                let bar = String(repeating: "#", count: filled) + String(repeating: "-", count: empty)
+                print("  Completions: [\(bar)] \(Int(compPercent * 100))%")
+                print("               \(compUsed) / \(compTotal)  (\(compRemaining) remaining)")
+            }
+        } else {
+            // Paid tier: show premium requests
+            let percentage = Int(summary.usagePercentage * 100)
+            let filledCount = min(barWidth, Int(Double(barWidth) * summary.usagePercentage))
+            let emptyCount = barWidth - filledCount
+            let bar = String(repeating: "#", count: filledCount) + String(repeating: "-", count: emptyCount)
+            print("  Premium:     [\(bar)] \(percentage)%")
+            print("               \(summary.premiumRequestsUsed) / \(summary.planLimit)  (\(summary.remaining) remaining)")
+        }
+
         print()
-        print("  Used:      \(summary.premiumRequestsUsed) / \(summary.planLimit)")
-        print("  Remaining: \(summary.remaining)")
         print("  Resets in: \(summary.daysUntilReset) days")
         print()
     }
