@@ -7,50 +7,175 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            switch store.authState {
-            case .loggedOut:
-                loggedOutView
-            case .authenticating:
-                authenticatingView
-            case let .loggedIn(user, _):
-                loggedInView(user: user)
+            // MARK: - Header
+            headerView
+
+            Divider()
+
+            // MARK: - Tool Cards
+            ScrollView {
+                VStack(spacing: 0) {
+                    copilotToolCard
+                    
+                    ForEach(ToolKind.allCases.filter(\.isComingSoon)) { tool in
+                        Divider()
+                        comingSoonCard(tool: tool)
+                    }
+                }
             }
+
+            Divider()
+
+            // MARK: - Footer
+            footerView
         }
-        .frame(width: 300)
+        .frame(width: 320)
         .task {
             await store.send(.onAppear).finish()
         }
     }
 
-    // MARK: - Logged Out
+    // MARK: - Header
 
     @ViewBuilder
-    private var loggedOutView: some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private var headerView: some View {
+        HStack {
             Label("AgenticUsage", systemImage: "chart.bar.fill")
                 .font(.headline)
+            Spacer()
+            Text("Version：\(Bundle.main.shortVersionString)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
 
+    // MARK: - Copilot Tool Card
+
+    @ViewBuilder
+    private var copilotToolCard: some View {
+        let tool = ToolKind.copilot
+        let isExpanded = store.expandedTool == tool
+
+        VStack(alignment: .leading, spacing: 0) {
+            // Collapsed header — always visible
+            Button {
+                store.send(.toggleToolExpansion(tool))
+            } label: {
+                copilotCardHeader(tool: tool, isExpanded: isExpanded)
+            }
+            .buttonStyle(.plain)
+
+            // Expanded content
+            if isExpanded {
+                Divider()
+                    .padding(.horizontal, 12)
+
+                copilotExpandedContent
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func copilotCardHeader(tool: ToolKind, isExpanded: Bool) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: tool.iconName)
+                .font(.body)
+                .foregroundStyle(.primary)
+                .frame(width: 20)
+
+            Text(tool.displayName)
+                .font(.subheadline)
+                .fontWeight(.medium)
+
+            // Separator + status
+            copilotStatusLabel
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                .animation(.easeInOut(duration: 0.15), value: isExpanded)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+    }
+
+    /// Status portion of the collapsed Copilot card: username + plan badge, or connection status.
+    @ViewBuilder
+    private var copilotStatusLabel: some View {
+        switch store.authState {
+        case .loggedOut:
+            Group {
+                Text("|")
+                    .foregroundStyle(.quaternary)
+                Text("Not Connected")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.caption)
+
+        case .authenticating:
+            Group {
+                Text("|")
+                    .foregroundStyle(.quaternary)
+                Text("Connecting...")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.caption)
+
+        case let .loggedIn(user, _):
+            Group {
+                Text("|")
+                    .foregroundStyle(.quaternary)
+                Text("@\(user.login)")
+                    .foregroundStyle(.secondary)
+                if let plan = store.detectedPlan {
+                    planBadge(plan: plan)
+                }
+            }
+            .font(.caption)
+        }
+    }
+
+    // MARK: - Copilot Expanded Content
+
+    @ViewBuilder
+    private var copilotExpandedContent: some View {
+        switch store.authState {
+        case .loggedOut:
+            copilotLoggedOutContent
+
+        case .authenticating:
+            copilotAuthenticatingContent
+
+        case .loggedIn:
+            copilotLoggedInContent
+        }
+    }
+
+    @ViewBuilder
+    private var copilotLoggedOutContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
             Text("Sign in with GitHub to view your Copilot premium request usage.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            Button("Sign in with GitHub") {
+            Button("Connect with GitHub") {
                 store.send(.loginButtonTapped)
             }
             .buttonStyle(.borderedProminent)
-            .controlSize(.regular)
+            .controlSize(.small)
         }
-        .padding()
+        .padding(12)
     }
 
-    // MARK: - Authenticating (Device Flow)
-
     @ViewBuilder
-    private var authenticatingView: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("Sign in to GitHub", systemImage: "person.badge.key")
-                .font(.headline)
-
+    private var copilotAuthenticatingContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
             if let flow = store.deviceFlowState {
                 Text("Enter this code on GitHub:")
                     .font(.caption)
@@ -58,7 +183,7 @@ struct MenuBarView: View {
 
                 HStack {
                     Text(flow.userCode)
-                        .font(.system(.title2, design: .monospaced, weight: .bold))
+                        .font(.system(.title3, design: .monospaced, weight: .bold))
                         .textSelection(.enabled)
 
                     Button {
@@ -84,43 +209,12 @@ struct MenuBarView: View {
                     .controlSize(.small)
             }
         }
-        .padding()
+        .padding(12)
     }
 
-    // MARK: - Logged In
-
     @ViewBuilder
-    private func loggedInView(user: GitHubUser) -> some View {
+    private var copilotLoggedInContent: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header with plan badge
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(user.name ?? user.login)
-                            .font(.headline)
-                        if let plan = store.detectedPlan {
-                            planBadge(plan: plan)
-                        }
-                    }
-                    Text("@\(user.login)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button {
-                    store.send(.fetchUsage)
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .buttonStyle(.borderless)
-                .disabled(store.isLoading)
-                .help("Refresh usage")
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 10)
-
-            Divider()
-
             // Usage display
             if store.isLoading {
                 HStack {
@@ -129,14 +223,14 @@ struct MenuBarView: View {
                         .controlSize(.small)
                     Spacer()
                 }
-                .padding()
+                .padding(12)
             } else if let summary = store.usageSummary {
                 usageSummaryView(summary: summary)
             }
 
             // Error
             if let error = store.errorMessage {
-                HStack {
+                HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(.yellow)
                     Text(error)
@@ -150,31 +244,82 @@ struct MenuBarView: View {
                     }
                     .buttonStyle(.borderless)
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, 12)
                 .padding(.vertical, 6)
             }
 
             Divider()
+                .padding(.horizontal, 12)
 
-            // Footer actions
+            // Card-level actions: Refresh + Sign Out
             HStack {
+                Button {
+                    store.send(.fetchUsage)
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderless)
+                .disabled(store.isLoading)
+
+                Spacer()
+
                 Button("Sign Out") {
                     store.send(.logoutButtonTapped)
                 }
                 .buttonStyle(.borderless)
                 .font(.caption)
-
-                Spacer()
-
-                Button("Quit") {
-                    store.send(.quitApp)
-                }
-                .buttonStyle(.borderless)
-                .font(.caption)
+                .foregroundStyle(.secondary)
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 12)
             .padding(.vertical, 8)
         }
+    }
+
+    // MARK: - Coming Soon Card
+
+    @ViewBuilder
+    private func comingSoonCard(tool: ToolKind) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: tool.iconName)
+                .font(.body)
+                .foregroundStyle(.tertiary)
+                .frame(width: 20)
+
+            Text(tool.displayName)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundStyle(.tertiary)
+
+            Text("|")
+                .font(.caption)
+                .foregroundStyle(.quaternary)
+
+            Text("Coming Soon")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+
+    // MARK: - Footer
+
+    @ViewBuilder
+    private var footerView: some View {
+        HStack {
+            Spacer()
+            Button("Quit") {
+                store.send(.quitApp)
+            }
+            .buttonStyle(.borderless)
+            .font(.caption)
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
     }
 
     // MARK: - Plan Badge
@@ -185,7 +330,7 @@ struct MenuBarView: View {
             .font(.system(.caption2, weight: .semibold))
             .foregroundStyle(.white)
             .padding(.horizontal, 6)
-            .padding(.vertical, 2)
+            .padding(.vertical, 1)
             .background(planBadgeColor(for: plan), in: Capsule())
     }
 
@@ -208,7 +353,7 @@ struct MenuBarView: View {
                 paidTierUsageView(summary: summary)
             }
         }
-        .padding()
+        .padding(12)
     }
 
     // MARK: - Paid Tier Usage
@@ -352,5 +497,14 @@ struct MenuBarView: View {
         case 0.8 ..< 1.0: .orange
         default: .red
         }
+    }
+}
+
+// MARK: - Bundle + Version
+
+extension Bundle {
+    /// `CFBundleShortVersionString` (e.g. "1.2.0"), falling back to "–" if missing.
+    var shortVersionString: String {
+        infoDictionary?["CFBundleShortVersionString"] as? String ?? "–"
     }
 }

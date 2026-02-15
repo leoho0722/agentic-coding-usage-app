@@ -15,6 +15,8 @@ struct MenuBarFeature {
         var isLoading: Bool = false
         var errorMessage: String?
         var deviceFlowState: DeviceFlowState?
+        /// Which tool card is currently expanded (accordion). Defaults to Copilot on launch.
+        var expandedTool: ToolKind? = .copilot
     }
     
     enum AuthState: Equatable, Sendable {
@@ -49,6 +51,8 @@ struct MenuBarFeature {
         case fetchUsage
         case usageResponse(CopilotUsageSummary)
         case usageFailed(String)
+        
+        case toggleToolExpansion(ToolKind)
         
         case openVerificationURL
         case copyUserCode
@@ -194,6 +198,16 @@ struct MenuBarFeature {
             case let .usageFailed(message):
                 state.isLoading = false
                 state.errorMessage = message
+                return .none
+                
+            case let .toggleToolExpansion(tool):
+                // Only available tools can be expanded; coming soon tools are not expandable.
+                guard tool.isAvailable else { return .none }
+                if state.expandedTool == tool {
+                    state.expandedTool = nil
+                } else {
+                    state.expandedTool = tool
+                }
                 return .none
                 
             case .openVerificationURL:
