@@ -40,6 +40,7 @@ struct MenuBarFeature {
     enum Action: Equatable, Sendable {
         case onAppear
         case checkExistingAuth
+        case requestNotificationAuthorization
         
         case loginButtonTapped
         case deviceCodeReceived(DeviceFlowState)
@@ -51,6 +52,7 @@ struct MenuBarFeature {
         case fetchUsage
         case usageResponse(CopilotUsageSummary)
         case usageFailed(String)
+        case checkUsageThresholds
         
         case toggleToolExpansion(ToolKind)
         
@@ -80,7 +82,16 @@ struct MenuBarFeature {
             switch action {
                 
             case .onAppear:
-                return .send(.checkExistingAuth)
+                return .merge(
+                    .send(.checkExistingAuth),
+                    .send(.requestNotificationAuthorization)
+                )
+                
+            case .requestNotificationAuthorization:
+                return .run { _ in
+                    @Dependency(\.notificationClient) var notificationClient
+                    _ = try await notificationClient.requestAuthorization()
+                } catch: { _, _ in }
                 
             case .checkExistingAuth:
                 return .run { send in
@@ -193,7 +204,64 @@ struct MenuBarFeature {
                 state.isLoading = false
                 state.usageSummary = summary
                 state.detectedPlan = summary.plan
-                return .none
+                return .send(.checkUsageThresholds)
+                
+            case .checkUsageThresholds:
+                guard let summary = state.usageSummary else { return .none }
+                let tool = ToolKind.copilot
+                return .run { _ in
+                    @Dependency(\.notificationClient) var notificationClient
+                    
+                    if summary.isFreeTier {
+                        // Free tier: check Chat and Completions separately
+                        if let chatRemaining = summary.freeChatRemaining,
+                           let chatTotal = summary.freeChatTotal, chatTotal > 0 {
+                            let chatUsedPct = Int(round(Double(chatTotal - chatRemaining) / Double(chatTotal) * 100))
+                            let chatThresholds = UsageThreshold.reached(by: chatUsedPct)
+                            for threshold in chatThresholds {
+                                let notifTool = "\(tool.id)-chat"
+                                if !notificationClient.hasNotified(notifTool, threshold.rawValue) {
+                                    let title = threshold.title(for: "\(tool.displayName) Chat")
+                                    let body = threshold.body(usagePercent: chatUsedPct)
+                                    try await notificationClient.send(
+                                        "\(notifTool)-\(threshold.rawValue)", title, body
+                                    )
+                                    notificationClient.markNotified(notifTool, threshold.rawValue)
+                                }
+                            }
+                        }
+                        if let compRemaining = summary.freeCompletionsRemaining,
+                           let compTotal = summary.freeCompletionsTotal, compTotal > 0 {
+                            let compUsedPct = Int(round(Double(compTotal - compRemaining) / Double(compTotal) * 100))
+                            let compThresholds = UsageThreshold.reached(by: compUsedPct)
+                            for threshold in compThresholds {
+                                let notifTool = "\(tool.id)-completions"
+                                if !notificationClient.hasNotified(notifTool, threshold.rawValue) {
+                                    let title = threshold.title(for: "\(tool.displayName) Completions")
+                                    let body = threshold.body(usagePercent: compUsedPct)
+                                    try await notificationClient.send(
+                                        "\(notifTool)-\(threshold.rawValue)", title, body
+                                    )
+                                    notificationClient.markNotified(notifTool, threshold.rawValue)
+                                }
+                            }
+                        }
+                    } else {
+                        // Paid tier: single usage percentage
+                        let usedPct = Int(round(summary.usagePercentage * 100))
+                        let thresholds = UsageThreshold.reached(by: usedPct)
+                        for threshold in thresholds {
+                            if !notificationClient.hasNotified(tool.id, threshold.rawValue) {
+                                let title = threshold.title(for: tool.displayName)
+                                let body = threshold.body(usagePercent: usedPct)
+                                try await notificationClient.send(
+                                    "\(tool.id)-\(threshold.rawValue)", title, body
+                                )
+                                notificationClient.markNotified(tool.id, threshold.rawValue)
+                            }
+                        }
+                    }
+                } catch: { _, _ in }
                 
             case let .usageFailed(message):
                 state.isLoading = false

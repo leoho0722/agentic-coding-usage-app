@@ -18,6 +18,7 @@ struct AgenticUsageApp: App {
         $0.oAuthService = .live
         $0.keychainService = .live
         $0.pasteboard = .live
+        $0.notificationClient = .live
     }
 
     var body: some Scene {
