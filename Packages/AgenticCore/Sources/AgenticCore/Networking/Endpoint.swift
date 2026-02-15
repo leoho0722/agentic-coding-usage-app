@@ -4,8 +4,6 @@ import Foundation
 public enum GitHubEndpoint: Sendable {
     /// `GET /user` — authenticated user profile.
     case user
-    /// `GET /users/{username}/settings/billing/premium_request/usage?year=&month=`
-    case premiumRequestUsage(username: String, year: Int, month: Int)
     /// `GET /copilot_internal/user` — internal Copilot status (plan, quota snapshots).
     case copilotStatus
 
@@ -21,16 +19,6 @@ public enum GitHubEndpoint: Sendable {
         switch self {
         case .user:
             return URL(string: "https://api.github.com/user")!
-
-        case let .premiumRequestUsage(username, year, month):
-            var components = URLComponents(
-                string: "https://api.github.com/users/\(username)/settings/billing/premium_request/usage"
-            )!
-            components.queryItems = [
-                URLQueryItem(name: "year", value: "\(year)"),
-                URLQueryItem(name: "month", value: "\(month)"),
-            ]
-            return components.url!
 
         case .copilotStatus:
             return URL(string: "https://api.github.com/copilot_internal/user")!
@@ -49,7 +37,7 @@ public enum GitHubEndpoint: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
         switch self {
-        case .user, .premiumRequestUsage:
+        case .user:
             request.httpMethod = "GET"
             if let accessToken {
                 request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")

@@ -1,16 +1,12 @@
 import AgenticCore
 import Dependencies
-import DependenciesMacros
 
 // MARK: - GitHubAPIClient Dependency
 
 extension GitHubAPIClient: @retroactive TestDependencyKey {
     public static let testValue = GitHubAPIClient(
         fetchUser: { _ in
-            GitHubUser(login: "testuser", id: 1, name: "Test User")
-        },
-        fetchPremiumRequestUsage: { _, _, _, _ in
-            PremiumRequestUsageResponse(usageItems: [])
+            GitHubUser(login: "testuser", name: "Test User")
         },
         fetchCopilotStatus: { _ in
             CopilotStatusResponse(
@@ -18,8 +14,7 @@ extension GitHubAPIClient: @retroactive TestDependencyKey {
                 quotaSnapshots: QuotaSnapshots(
                     premiumInteractions: QuotaSnapshot(percentRemaining: 80.0),
                     chat: QuotaSnapshot(percentRemaining: 90.0)
-                ),
-                quotaResetDate: nil
+                )
             )
         }
     )

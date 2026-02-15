@@ -42,8 +42,7 @@ struct UsageCommand: AsyncParsableCommand {
                 plan: plan,
                 planLimit: plan.limit,
                 daysUntilReset: daysUntilReset,
-                premiumPercentRemaining: status.quotaSnapshots?.premiumInteractions?.percentRemaining,
-                chatPercentRemaining: status.quotaSnapshots?.chat?.percentRemaining
+                premiumPercentRemaining: status.quotaSnapshots?.premiumInteractions?.percentRemaining
             )
         }
 

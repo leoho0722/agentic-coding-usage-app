@@ -7,10 +7,6 @@ import Foundation
 public struct GitHubAPIClient: Sendable {
     /// Fetch the authenticated user's profile.
     public var fetchUser: @Sendable (_ accessToken: String) async throws -> GitHubUser
-    /// Fetch premium request usage for the current billing cycle (billing API).
-    public var fetchPremiumRequestUsage: @Sendable (
-        _ accessToken: String, _ username: String, _ year: Int, _ month: Int
-    ) async throws -> PremiumRequestUsageResponse
     /// Fetch Copilot status including plan and quota snapshots (internal API).
     public var fetchCopilotStatus: @Sendable (
         _ accessToken: String
@@ -18,15 +14,11 @@ public struct GitHubAPIClient: Sendable {
 
     public init(
         fetchUser: @escaping @Sendable (_ accessToken: String) async throws -> GitHubUser,
-        fetchPremiumRequestUsage: @escaping @Sendable (
-            _ accessToken: String, _ username: String, _ year: Int, _ month: Int
-        ) async throws -> PremiumRequestUsageResponse,
         fetchCopilotStatus: @escaping @Sendable (
             _ accessToken: String
         ) async throws -> CopilotStatusResponse
     ) {
         self.fetchUser = fetchUser
-        self.fetchPremiumRequestUsage = fetchPremiumRequestUsage
         self.fetchCopilotStatus = fetchCopilotStatus
     }
 }
@@ -41,22 +33,6 @@ extension GitHubAPIClient {
             let (data, response) = try await URLSession.shared.data(for: request)
             try validateHTTPResponse(response, data: data)
             return try JSONDecoder().decode(GitHubUser.self, from: data)
-        },
-        fetchPremiumRequestUsage: { accessToken, username, year, month in
-            let request = GitHubEndpoint
-                .premiumRequestUsage(username: username, year: year, month: month)
-                .makeRequest(accessToken: accessToken)
-            let (data, response) = try await URLSession.shared.data(for: request)
-            try validateHTTPResponse(response, data: data)
-            do {
-                return try JSONDecoder().decode(PremiumRequestUsageResponse.self, from: data)
-            } catch let decodingError {
-                let rawJSON = String(data: data, encoding: .utf8) ?? "<non-UTF8 data>"
-                throw GitHubAPIError.decodingFailed(
-                    underlyingError: decodingError,
-                    rawResponse: rawJSON
-                )
-            }
         },
         fetchCopilotStatus: { accessToken in
             let request = GitHubEndpoint.copilotStatus.makeRequest(accessToken: accessToken)

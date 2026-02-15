@@ -1,84 +1,9 @@
 import Foundation
 
-// MARK: - Billing API Response Models (kept for backwards compatibility)
-
-/// Top-level response from the GitHub premium request usage API.
-/// Endpoint: `GET /users/{username}/settings/billing/premium_request/usage`
-public struct PremiumRequestUsageResponse: Codable, Sendable {
-    public let timePeriod: TimePeriod?
-    public let user: String?
-    public let usageItems: [UsageItem]
-
-    public init(
-        timePeriod: TimePeriod? = nil,
-        user: String? = nil,
-        usageItems: [UsageItem]
-    ) {
-        self.timePeriod = timePeriod
-        self.user = user
-        self.usageItems = usageItems
-    }
-}
-
-/// The time period filter applied to the usage response.
-public struct TimePeriod: Codable, Sendable {
-    public let year: Int?
-    public let month: Int?
-    public let day: Int?
-
-    public init(year: Int? = nil, month: Int? = nil, day: Int? = nil) {
-        self.year = year
-        self.month = month
-        self.day = day
-    }
-}
-
-/// A single usage item from the billing premium request API.
-/// The API returns camelCase JSON keys (e.g. `grossQuantity`, not `gross_quantity`).
-public struct UsageItem: Codable, Sendable {
-    public let product: String
-    public let sku: String?
-    public let model: String?
-    public let unitType: String?
-    public let pricePerUnit: Double?
-    public let grossQuantity: Int
-    public let grossAmount: Double?
-    public let discountQuantity: Int?
-    public let discountAmount: Double?
-    public let netQuantity: Int?
-    public let netAmount: Double?
-
-    public init(
-        product: String,
-        sku: String? = nil,
-        model: String? = nil,
-        unitType: String? = nil,
-        pricePerUnit: Double? = nil,
-        grossQuantity: Int,
-        grossAmount: Double? = nil,
-        discountQuantity: Int? = nil,
-        discountAmount: Double? = nil,
-        netQuantity: Int? = nil,
-        netAmount: Double? = nil
-    ) {
-        self.product = product
-        self.sku = sku
-        self.model = model
-        self.unitType = unitType
-        self.pricePerUnit = pricePerUnit
-        self.grossQuantity = grossQuantity
-        self.grossAmount = grossAmount
-        self.discountQuantity = discountQuantity
-        self.discountAmount = discountAmount
-        self.netQuantity = netQuantity
-        self.netAmount = netAmount
-    }
-}
-
 // MARK: - Computed Usage Model
 
 /// Aggregated Copilot usage summary for display.
-/// Now supports both the billing API (absolute numbers) and the internal API (percentage-based).
+/// Supports both the internal API percentage-based (paid tier) and count-based (free tier) data.
 public struct CopilotUsageSummary: Equatable, Sendable {
     /// The auto-detected plan from the internal API.
     public let plan: CopilotPlan
@@ -91,8 +16,6 @@ public struct CopilotUsageSummary: Equatable, Sendable {
 
     /// Percentage of premium requests remaining (0.0–1.0). Nil for free tier.
     public let premiumPercentRemaining: Double?
-    /// Percentage of chat quota remaining (0.0–1.0). Nil if not available.
-    public let chatPercentRemaining: Double?
 
     // MARK: - Free tier fields (from limited_user_quotas)
 
@@ -110,7 +33,6 @@ public struct CopilotUsageSummary: Equatable, Sendable {
         planLimit: Int,
         daysUntilReset: Int,
         premiumPercentRemaining: Double? = nil,
-        chatPercentRemaining: Double? = nil,
         freeChatRemaining: Int? = nil,
         freeChatTotal: Int? = nil,
         freeCompletionsRemaining: Int? = nil,
@@ -120,7 +42,6 @@ public struct CopilotUsageSummary: Equatable, Sendable {
         self.planLimit = planLimit
         self.daysUntilReset = daysUntilReset
         self.premiumPercentRemaining = premiumPercentRemaining
-        self.chatPercentRemaining = chatPercentRemaining
         self.freeChatRemaining = freeChatRemaining
         self.freeChatTotal = freeChatTotal
         self.freeCompletionsRemaining = freeCompletionsRemaining

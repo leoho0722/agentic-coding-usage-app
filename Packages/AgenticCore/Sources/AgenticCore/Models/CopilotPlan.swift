@@ -1,7 +1,5 @@
-import Foundation
-
 /// Represents a GitHub Copilot subscription plan and its monthly premium request limit.
-public enum CopilotPlan: String, Sendable, CaseIterable, Codable {
+public enum CopilotPlan: String, Sendable, Equatable {
     case free = "Free"
     case pro = "Pro"
     case proPlus = "Pro+"

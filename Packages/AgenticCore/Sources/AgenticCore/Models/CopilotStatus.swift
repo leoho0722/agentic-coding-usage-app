@@ -1,5 +1,3 @@
-import Foundation
-
 // MARK: - Copilot Internal User API Response
 
 /// Response from the internal Copilot API.
@@ -12,38 +10,28 @@ public struct CopilotStatusResponse: Codable, Sendable, Equatable {
     public let copilotPlan: String?
     /// Quota snapshots for paid tiers.
     public let quotaSnapshots: QuotaSnapshots?
-    /// Date when paid tier quotas reset.
-    public let quotaResetDate: String?
     /// Remaining quotas for free tier users.
     public let limitedUserQuotas: LimitedQuotas?
     /// Total monthly quotas for free tier users.
     public let monthlyQuotas: MonthlyQuotas?
-    /// Date when free tier quotas reset.
-    public let limitedUserResetDate: String?
 
     enum CodingKeys: String, CodingKey {
         case copilotPlan = "copilot_plan"
         case quotaSnapshots = "quota_snapshots"
-        case quotaResetDate = "quota_reset_date"
         case limitedUserQuotas = "limited_user_quotas"
         case monthlyQuotas = "monthly_quotas"
-        case limitedUserResetDate = "limited_user_reset_date"
     }
 
     public init(
         copilotPlan: String? = nil,
         quotaSnapshots: QuotaSnapshots? = nil,
-        quotaResetDate: String? = nil,
         limitedUserQuotas: LimitedQuotas? = nil,
-        monthlyQuotas: MonthlyQuotas? = nil,
-        limitedUserResetDate: String? = nil
+        monthlyQuotas: MonthlyQuotas? = nil
     ) {
         self.copilotPlan = copilotPlan
         self.quotaSnapshots = quotaSnapshots
-        self.quotaResetDate = quotaResetDate
         self.limitedUserQuotas = limitedUserQuotas
         self.monthlyQuotas = monthlyQuotas
-        self.limitedUserResetDate = limitedUserResetDate
     }
 }
 

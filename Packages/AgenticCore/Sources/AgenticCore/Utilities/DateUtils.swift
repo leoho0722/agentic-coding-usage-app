@@ -20,12 +20,4 @@ public enum DateUtils {
         let components = calendar.dateComponents([.day], from: date, to: firstOfNextMonth)
         return max(0, components.day ?? 0)
     }
-
-    /// Returns the current year and month (UTC) for billing API queries.
-    public static func currentBillingPeriod(from date: Date = .now) -> (year: Int, month: Int) {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "UTC")!
-        let components = calendar.dateComponents([.year, .month], from: date)
-        return (year: components.year ?? 2025, month: components.month ?? 1)
-    }
 }

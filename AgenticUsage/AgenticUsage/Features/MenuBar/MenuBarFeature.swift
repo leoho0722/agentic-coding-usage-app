@@ -1,6 +1,6 @@
 import AgenticCore
+import AppKit
 import ComposableArchitecture
-import SwiftUI
 
 @Reducer
 struct MenuBarFeature {
@@ -21,16 +21,6 @@ struct MenuBarFeature {
         case loggedOut
         case authenticating
         case loggedIn(user: GitHubUser, accessToken: String)
-        
-        var isLoggedIn: Bool {
-            if case .loggedIn = self { return true }
-            return false
-        }
-        
-        var user: GitHubUser? {
-            if case let .loggedIn(user, _) = self { return user }
-            return nil
-        }
         
         var accessToken: String? {
             if case let .loggedIn(_, token) = self { return token }
@@ -187,8 +177,7 @@ struct MenuBarFeature {
                             plan: plan,
                             planLimit: plan.limit,
                             daysUntilReset: daysUntilReset,
-                            premiumPercentRemaining: status.quotaSnapshots?.premiumInteractions?.percentRemaining,
-                            chatPercentRemaining: status.quotaSnapshots?.chat?.percentRemaining
+                            premiumPercentRemaining: status.quotaSnapshots?.premiumInteractions?.percentRemaining
                         )
                     }
                     await send(.usageResponse(summary))
