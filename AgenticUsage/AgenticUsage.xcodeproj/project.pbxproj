@@ -1,0 +1,676 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D0A000012F42000000000001 /* AgenticCore in Frameworks */ = {isa = PBXBuildFile; productRef = D0A000002F42000000000001 /* AgenticCore */; };
+		D0C023862F41F445008A131A /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = D0C023852F41F445008A131A /* ComposableArchitecture */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D0C023632F41EAD2008A131A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D0C0234D2F41EAD1008A131A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D0C023542F41EAD1008A131A;
+			remoteInfo = AgenticUsage;
+		};
+		D0C0236D2F41EAD2008A131A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D0C0234D2F41EAD1008A131A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D0C023542F41EAD1008A131A;
+			remoteInfo = AgenticUsage;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		D0A000032F42100000000003 /* AgenticUsage/Configuration/Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AgenticUsage/Configuration/Secrets.xcconfig; sourceTree = "<group>"; };
+		D0C023552F41EAD1008A131A /* AgenticUsage.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AgenticUsage.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0C023622F41EAD2008A131A /* AgenticUsageTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AgenticUsageTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0C0236C2F41EAD2008A131A /* AgenticUsageUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AgenticUsageUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D0A000042F42200000000004 /* Exceptions for "AgenticUsage" folder in "AgenticUsage" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Configuration/Info.plist,
+				Configuration/Secrets.xcconfig,
+				Configuration/Secrets.xcconfig.template,
+			);
+			target = D0C023542F41EAD1008A131A /* AgenticUsage */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D0C023572F41EAD1008A131A /* AgenticUsage */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D0A000042F42200000000004 /* Exceptions for "AgenticUsage" folder in "AgenticUsage" target */,
+			);
+			path = AgenticUsage;
+			sourceTree = "<group>";
+		};
+		D0C023652F41EAD2008A131A /* AgenticUsageTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AgenticUsageTests;
+			sourceTree = "<group>";
+		};
+		D0C0236F2F41EAD2008A131A /* AgenticUsageUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AgenticUsageUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D0C023522F41EAD1008A131A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D0C023862F41F445008A131A /* ComposableArchitecture in Frameworks */,
+				D0A000012F42000000000001 /* AgenticCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D0C0235F2F41EAD2008A131A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D0C023692F41EAD2008A131A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D0C0234C2F41EAD1008A131A = {
+			isa = PBXGroup;
+			children = (
+				D0A000032F42100000000003 /* AgenticUsage/Configuration/Secrets.xcconfig */,
+				D0C023572F41EAD1008A131A /* AgenticUsage */,
+				D0C023652F41EAD2008A131A /* AgenticUsageTests */,
+				D0C0236F2F41EAD2008A131A /* AgenticUsageUITests */,
+				D0C023842F41F445008A131A /* Frameworks */,
+				D0C023562F41EAD1008A131A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D0C023562F41EAD1008A131A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D0C023552F41EAD1008A131A /* AgenticUsage.app */,
+				D0C023622F41EAD2008A131A /* AgenticUsageTests.xctest */,
+				D0C0236C2F41EAD2008A131A /* AgenticUsageUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D0C023842F41F445008A131A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D0C023542F41EAD1008A131A /* AgenticUsage */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D0C023762F41EAD2008A131A /* Build configuration list for PBXNativeTarget "AgenticUsage" */;
+			buildPhases = (
+				D0C023512F41EAD1008A131A /* Sources */,
+				D0C023522F41EAD1008A131A /* Frameworks */,
+				D0C023532F41EAD1008A131A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D0C023572F41EAD1008A131A /* AgenticUsage */,
+			);
+			name = AgenticUsage;
+			packageProductDependencies = (
+				D0C023852F41F445008A131A /* ComposableArchitecture */,
+				D0A000002F42000000000001 /* AgenticCore */,
+			);
+			productName = AgenticUsage;
+			productReference = D0C023552F41EAD1008A131A /* AgenticUsage.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D0C023612F41EAD2008A131A /* AgenticUsageTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D0C023792F41EAD2008A131A /* Build configuration list for PBXNativeTarget "AgenticUsageTests" */;
+			buildPhases = (
+				D0C0235E2F41EAD2008A131A /* Sources */,
+				D0C0235F2F41EAD2008A131A /* Frameworks */,
+				D0C023602F41EAD2008A131A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D0C023642F41EAD2008A131A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D0C023652F41EAD2008A131A /* AgenticUsageTests */,
+			);
+			name = AgenticUsageTests;
+			packageProductDependencies = (
+			);
+			productName = AgenticUsageTests;
+			productReference = D0C023622F41EAD2008A131A /* AgenticUsageTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D0C0236B2F41EAD2008A131A /* AgenticUsageUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D0C0237C2F41EAD2008A131A /* Build configuration list for PBXNativeTarget "AgenticUsageUITests" */;
+			buildPhases = (
+				D0C023682F41EAD2008A131A /* Sources */,
+				D0C023692F41EAD2008A131A /* Frameworks */,
+				D0C0236A2F41EAD2008A131A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D0C0236E2F41EAD2008A131A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D0C0236F2F41EAD2008A131A /* AgenticUsageUITests */,
+			);
+			name = AgenticUsageUITests;
+			packageProductDependencies = (
+			);
+			productName = AgenticUsageUITests;
+			productReference = D0C0236C2F41EAD2008A131A /* AgenticUsageUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D0C0234D2F41EAD1008A131A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2620;
+				LastUpgradeCheck = 2620;
+				TargetAttributes = {
+					D0C023542F41EAD1008A131A = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					D0C023612F41EAD2008A131A = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = D0C023542F41EAD1008A131A;
+					};
+					D0C0236B2F41EAD2008A131A = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = D0C023542F41EAD1008A131A;
+					};
+				};
+			};
+			buildConfigurationList = D0C023502F41EAD1008A131A /* Build configuration list for PBXProject "AgenticUsage" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D0C0234C2F41EAD1008A131A;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				D0C023832F41F3B1008A131A /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
+				D0A000022F42000000000002 /* XCLocalSwiftPackageReference "../Packages/AgenticCore" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D0C023562F41EAD1008A131A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D0C023542F41EAD1008A131A /* AgenticUsage */,
+				D0C023612F41EAD2008A131A /* AgenticUsageTests */,
+				D0C0236B2F41EAD2008A131A /* AgenticUsageUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D0C023532F41EAD1008A131A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D0C023602F41EAD2008A131A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D0C0236A2F41EAD2008A131A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D0C023512F41EAD1008A131A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D0C0235E2F41EAD2008A131A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D0C023682F41EAD2008A131A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D0C023642F41EAD2008A131A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D0C023542F41EAD1008A131A /* AgenticUsage */;
+			targetProxy = D0C023632F41EAD2008A131A /* PBXContainerItemProxy */;
+		};
+		D0C0236E2F41EAD2008A131A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D0C023542F41EAD1008A131A /* AgenticUsage */;
+			targetProxy = D0C0236D2F41EAD2008A131A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		D0C023742F41EAD2008A131A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 23JEQ2524P;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		D0C023752F41EAD2008A131A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 23JEQ2524P;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		D0C023772F41EAD2008A131A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D0A000032F42100000000003 /* AgenticUsage/Configuration/Secrets.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = AgenticUsage/AgenticUsage.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 23JEQ2524P;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AgenticUsage/Configuration/Info.plist;
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.leoho.AgenticUsage;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		D0C023782F41EAD2008A131A /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D0A000032F42100000000003 /* AgenticUsage/Configuration/Secrets.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = AgenticUsage/AgenticUsage.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 23JEQ2524P;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AgenticUsage/Configuration/Info.plist;
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.leoho.AgenticUsage;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		D0C0237A2F41EAD2008A131A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 23JEQ2524P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.leoho.AgenticUsageTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AgenticUsage.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AgenticUsage";
+			};
+			name = Debug;
+		};
+		D0C0237B2F41EAD2008A131A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 23JEQ2524P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.leoho.AgenticUsageTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AgenticUsage.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AgenticUsage";
+			};
+			name = Release;
+		};
+		D0C0237D2F41EAD2008A131A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 23JEQ2524P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.leoho.AgenticUsageUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TEST_TARGET_NAME = AgenticUsage;
+			};
+			name = Debug;
+		};
+		D0C0237E2F41EAD2008A131A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 23JEQ2524P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.leoho.AgenticUsageUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TEST_TARGET_NAME = AgenticUsage;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D0C023502F41EAD1008A131A /* Build configuration list for PBXProject "AgenticUsage" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D0C023742F41EAD2008A131A /* Debug */,
+				D0C023752F41EAD2008A131A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D0C023762F41EAD2008A131A /* Build configuration list for PBXNativeTarget "AgenticUsage" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D0C023772F41EAD2008A131A /* Debug */,
+				D0C023782F41EAD2008A131A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D0C023792F41EAD2008A131A /* Build configuration list for PBXNativeTarget "AgenticUsageTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D0C0237A2F41EAD2008A131A /* Debug */,
+				D0C0237B2F41EAD2008A131A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D0C0237C2F41EAD2008A131A /* Build configuration list for PBXNativeTarget "AgenticUsageUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D0C0237D2F41EAD2008A131A /* Debug */,
+				D0C0237E2F41EAD2008A131A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		D0A000022F42000000000002 /* XCLocalSwiftPackageReference "../Packages/AgenticCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../Packages/AgenticCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D0C023832F41F3B1008A131A /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.23.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D0A000002F42000000000001 /* AgenticCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AgenticCore;
+		};
+		D0C023852F41F445008A131A /* ComposableArchitecture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D0C023832F41F3B1008A131A /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
+			productName = ComposableArchitecture;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = D0C0234D2F41EAD1008A131A /* Project object */;
+}

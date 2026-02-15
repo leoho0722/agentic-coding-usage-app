@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:agentic-coding-usage-app}/AgenticCLI",
+            "name": "Debug AgenticCLI (AgenticCLI)",
+            "target": "AgenticCLI",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug AgenticCLI (AgenticCLI)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:agentic-coding-usage-app}/AgenticCLI",
+            "name": "Release AgenticCLI (AgenticCLI)",
+            "target": "AgenticCLI",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release AgenticCLI (AgenticCLI)"
+        }
+    ]
+}

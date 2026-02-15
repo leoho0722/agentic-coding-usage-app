@@ -1,0 +1,83 @@
+import Foundation
+
+/// A dependency-injectable GitHub API client.
+///
+/// Uses closure-based injection so TCA and CLI can each provide their own
+/// implementations (live, mock, etc.).
+public struct GitHubAPIClient: Sendable {
+    /// Fetch the authenticated user's profile.
+    public var fetchUser: @Sendable (_ accessToken: String) async throws -> GitHubUser
+    /// Fetch premium request usage for the current billing cycle.
+    public var fetchPremiumRequestUsage: @Sendable (
+        _ accessToken: String, _ username: String, _ year: Int, _ month: Int
+    ) async throws -> PremiumRequestUsageResponse
+
+    public init(
+        fetchUser: @escaping @Sendable (_ accessToken: String) async throws -> GitHubUser,
+        fetchPremiumRequestUsage: @escaping @Sendable (
+            _ accessToken: String, _ username: String, _ year: Int, _ month: Int
+        ) async throws -> PremiumRequestUsageResponse
+    ) {
+        self.fetchUser = fetchUser
+        self.fetchPremiumRequestUsage = fetchPremiumRequestUsage
+    }
+}
+
+// MARK: - Live Implementation
+
+extension GitHubAPIClient {
+    /// Production implementation using `URLSession`.
+    public static let live = GitHubAPIClient(
+        fetchUser: { accessToken in
+            let request = GitHubEndpoint.user.makeRequest(accessToken: accessToken)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            try validateHTTPResponse(response, data: data)
+            return try JSONDecoder().decode(GitHubUser.self, from: data)
+        },
+        fetchPremiumRequestUsage: { accessToken, username, year, month in
+            let request = GitHubEndpoint
+                .premiumRequestUsage(username: username, year: year, month: month)
+                .makeRequest(accessToken: accessToken)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            try validateHTTPResponse(response, data: data)
+            do {
+                return try JSONDecoder().decode(PremiumRequestUsageResponse.self, from: data)
+            } catch let decodingError {
+                let rawJSON = String(data: data, encoding: .utf8) ?? "<non-UTF8 data>"
+                throw GitHubAPIError.decodingFailed(
+                    underlyingError: decodingError,
+                    rawResponse: rawJSON
+                )
+            }
+        }
+    )
+}
+
+// MARK: - Helpers
+
+public enum GitHubAPIError: LocalizedError, Sendable {
+    case httpError(statusCode: Int, message: String)
+    case invalidResponse
+    case decodingFailed(underlyingError: any Error, rawResponse: String)
+
+    public var errorDescription: String? {
+        switch self {
+        case let .httpError(statusCode, message):
+            "GitHub API error (\(statusCode)): \(message)"
+        case .invalidResponse:
+            "Invalid response from GitHub API"
+        case let .decodingFailed(underlyingError, rawResponse):
+            "Failed to decode API response: \(underlyingError.localizedDescription)\nRaw response: \(rawResponse.prefix(500))"
+        }
+    }
+}
+
+private func validateHTTPResponse(_ response: URLResponse, data: Data) throws {
+    guard let httpResponse = response as? HTTPURLResponse else {
+        throw GitHubAPIError.invalidResponse
+    }
+    guard (200 ... 299).contains(httpResponse.statusCode) else {
+        let message = String(data: data, encoding: .utf8) ?? "Unknown error"
+        throw GitHubAPIError.httpError(statusCode: httpResponse.statusCode, message: message)
+    }
+}
