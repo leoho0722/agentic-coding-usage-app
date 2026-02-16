@@ -44,8 +44,8 @@ enum ToolKind: String, CaseIterable, Identifiable, Sendable, Equatable {
     /// Whether this tool is currently functional (has a working integration).
     var isAvailable: Bool {
         switch self {
-        case .copilot: true
-        case .claudeCode, .codex, .antigravity: false
+        case .copilot, .claudeCode: true
+        case .codex, .antigravity: false
         }
     }
 

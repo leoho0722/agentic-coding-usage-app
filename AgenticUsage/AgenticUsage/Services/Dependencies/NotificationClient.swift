@@ -8,37 +8,41 @@ struct NotificationClient: Sendable {
     var requestAuthorization: @Sendable () async throws -> Bool
     /// Send a local notification with the given title and body.
     var send: @Sendable (_ id: String, _ title: String, _ body: String) async throws -> Void
-    /// Check whether a threshold has already been notified for a given tool in the current reset cycle.
-    var hasNotified: @Sendable (_ tool: String, _ threshold: Int) -> Bool
-    /// Mark a threshold as notified for a given tool in the current reset cycle.
-    var markNotified: @Sendable (_ tool: String, _ threshold: Int) -> Void
-    /// Clear all notified thresholds (e.g. on monthly reset).
+    /// Check whether a threshold has already been notified for a given tool-window in the current reset cycle.
+    var hasNotified: @Sendable (_ toolWindow: String, _ threshold: Int, _ resetCycle: String) -> Bool
+    /// Mark a threshold as notified for a given tool-window in the current reset cycle.
+    var markNotified: @Sendable (_ toolWindow: String, _ threshold: Int, _ resetCycle: String) -> Void
+    /// Clear all notified thresholds (e.g. for testing or manual reset).
     var clearNotified: @Sendable () -> Void
 }
 
 // MARK: - Live Implementation
 
 extension NotificationClient {
-    /// UserDefaults key storing `[String: [Int]]` — tool id → list of notified threshold raw values.
-    /// Also stores the reset-cycle month so we can auto-clear on a new month.
-    private static let notifiedKey = "notifiedUsageThresholds"
-    private static let resetMonthKey = "notifiedResetMonth"
+    /// UserDefaults key storing `[String: NotifiedRecord]` encoded as JSON.
+    /// Each tool-window has its own reset cycle identifier and list of notified thresholds.
+    private static let notifiedKey = "notifiedUsageThresholds_v2"
 
-    /// Returns a "YYYY-MM" string for the current UTC month.
-    private static func currentResetMonth() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM"
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        return formatter.string(from: Date())
+    /// Per-tool-window record of which thresholds have been notified and for which cycle.
+    private struct NotifiedRecord: Codable {
+        var resetCycle: String
+        var thresholds: [Int]
     }
 
-    /// Auto-clears notified records if the month has changed (usage counters reset on the 1st UTC).
-    private static func autoResetIfNeeded() {
-        let current = currentResetMonth()
-        let stored = UserDefaults.standard.string(forKey: resetMonthKey)
-        if stored != current {
-            UserDefaults.standard.removeObject(forKey: notifiedKey)
-            UserDefaults.standard.set(current, forKey: resetMonthKey)
+    /// Load the notified records dictionary from UserDefaults.
+    private static func loadRecords() -> [String: NotifiedRecord] {
+        guard let data = UserDefaults.standard.data(forKey: notifiedKey),
+              let dict = try? JSONDecoder().decode([String: NotifiedRecord].self, from: data)
+        else {
+            return [:]
+        }
+        return dict
+    }
+
+    /// Save the notified records dictionary to UserDefaults.
+    private static func saveRecords(_ records: [String: NotifiedRecord]) {
+        if let data = try? JSONEncoder().encode(records) {
+            UserDefaults.standard.set(data, forKey: notifiedKey)
         }
     }
 
@@ -60,20 +64,28 @@ extension NotificationClient {
             )
             try await UNUserNotificationCenter.current().add(request)
         },
-        hasNotified: { tool, threshold in
-            autoResetIfNeeded()
-            let dict = UserDefaults.standard.dictionary(forKey: notifiedKey) as? [String: [Int]] ?? [:]
-            return dict[tool]?.contains(threshold) ?? false
-        },
-        markNotified: { tool, threshold in
-            autoResetIfNeeded()
-            var dict = UserDefaults.standard.dictionary(forKey: notifiedKey) as? [String: [Int]] ?? [:]
-            var list = dict[tool] ?? []
-            if !list.contains(threshold) {
-                list.append(threshold)
+        hasNotified: { toolWindow, threshold, resetCycle in
+            var records = loadRecords()
+            // If cycle changed for this tool-window, clear its thresholds
+            if let record = records[toolWindow], record.resetCycle != resetCycle {
+                records[toolWindow] = NotifiedRecord(resetCycle: resetCycle, thresholds: [])
+                saveRecords(records)
+                return false
             }
-            dict[tool] = list
-            UserDefaults.standard.set(dict, forKey: notifiedKey)
+            return records[toolWindow]?.thresholds.contains(threshold) ?? false
+        },
+        markNotified: { toolWindow, threshold, resetCycle in
+            var records = loadRecords()
+            var record = records[toolWindow] ?? NotifiedRecord(resetCycle: resetCycle, thresholds: [])
+            // If cycle changed, reset thresholds
+            if record.resetCycle != resetCycle {
+                record = NotifiedRecord(resetCycle: resetCycle, thresholds: [])
+            }
+            if !record.thresholds.contains(threshold) {
+                record.thresholds.append(threshold)
+            }
+            records[toolWindow] = record
+            saveRecords(records)
         },
         clearNotified: {
             UserDefaults.standard.removeObject(forKey: notifiedKey)
@@ -87,8 +99,8 @@ extension NotificationClient: TestDependencyKey {
     static let testValue = NotificationClient(
         requestAuthorization: { true },
         send: { _, _, _ in },
-        hasNotified: { _, _ in false },
-        markNotified: { _, _ in },
+        hasNotified: { _, _, _ in false },
+        markNotified: { _, _, _ in },
         clearNotified: {}
     )
 }

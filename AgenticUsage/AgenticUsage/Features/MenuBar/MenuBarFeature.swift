@@ -9,12 +9,20 @@ struct MenuBarFeature {
     
     @ObservableState
     struct State: Equatable {
+        // Copilot
         var authState: AuthState = .loggedOut
         var usageSummary: CopilotUsageSummary?
         var detectedPlan: CopilotPlan?
         var isLoading: Bool = false
         var errorMessage: String?
         var deviceFlowState: DeviceFlowState?
+
+        // Claude Code
+        var claudeConnectionState: ClaudeConnectionState = .notDetected
+        var claudeUsageSummary: ClaudeUsageSummary?
+        var isClaudeLoading: Bool = false
+        var claudeErrorMessage: String?
+
         /// Which tool card is currently expanded (accordion). Defaults to Copilot on launch.
         var expandedTool: ToolKind? = .copilot
     }
@@ -34,6 +42,13 @@ struct MenuBarFeature {
         let userCode: String
         let verificationUri: String
     }
+
+    enum ClaudeConnectionState: Equatable, Sendable {
+        /// No credentials found on disk / Keychain.
+        case notDetected
+        /// Credentials found and usage loaded.
+        case connected(subscriptionType: String?)
+    }
     
     // MARK: - Action
     
@@ -42,6 +57,7 @@ struct MenuBarFeature {
         case checkExistingAuth
         case requestNotificationAuthorization
         
+        // Copilot
         case loginButtonTapped
         case deviceCodeReceived(DeviceFlowState)
         case loginCompleted(GitHubUser, String)
@@ -53,12 +69,21 @@ struct MenuBarFeature {
         case usageResponse(CopilotUsageSummary)
         case usageFailed(String)
         case checkUsageThresholds
-        
+
+        // Claude Code
+        case detectClaudeCredentials
+        case fetchClaudeUsage
+        case claudeUsageResponse(ClaudeUsageSummary)
+        case claudeUsageFailed(String)
+        case checkClaudeUsageThresholds
+
+        // UI
         case toggleToolExpansion(ToolKind)
         
         case openVerificationURL
         case copyUserCode
         case dismissError
+        case dismissClaudeError
         case quitApp
     }
     
@@ -74,6 +99,16 @@ struct MenuBarFeature {
         }
         return clientID
     }()
+
+    // MARK: - Reset Cycle Helpers
+
+    /// Returns "YYYY-MM" UTC string for Copilot monthly reset cycle.
+    private static func copilotResetCycle() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        return formatter.string(from: Date())
+    }
     
     // MARK: - Body
     
@@ -84,6 +119,7 @@ struct MenuBarFeature {
             case .onAppear:
                 return .merge(
                     .send(.checkExistingAuth),
+                    .send(.detectClaudeCredentials),
                     .send(.requestNotificationAuthorization)
                 )
                 
@@ -176,7 +212,6 @@ struct MenuBarFeature {
                     
                     let summary: CopilotUsageSummary
                     if plan == .free {
-                        // Free tier: use limited_user_quotas
                         summary = CopilotUsageSummary(
                             plan: plan,
                             planLimit: plan.limit,
@@ -187,7 +222,6 @@ struct MenuBarFeature {
                             freeCompletionsTotal: status.monthlyQuotas?.completions
                         )
                     } else {
-                        // Paid tier: use quota_snapshots
                         summary = CopilotUsageSummary(
                             plan: plan,
                             planLimit: plan.limit,
@@ -209,6 +243,7 @@ struct MenuBarFeature {
             case .checkUsageThresholds:
                 guard let summary = state.usageSummary else { return .none }
                 let tool = ToolKind.copilot
+                let resetCycle = Self.copilotResetCycle()
                 return .run { _ in
                     @Dependency(\.notificationClient) var notificationClient
                     
@@ -220,13 +255,13 @@ struct MenuBarFeature {
                             let chatThresholds = UsageThreshold.reached(by: chatUsedPct)
                             for threshold in chatThresholds {
                                 let notifTool = "\(tool.id)-chat"
-                                if !notificationClient.hasNotified(notifTool, threshold.rawValue) {
+                                if !notificationClient.hasNotified(notifTool, threshold.rawValue, resetCycle) {
                                     let title = threshold.title(for: "\(tool.displayName) Chat")
                                     let body = threshold.body(usagePercent: chatUsedPct)
                                     try await notificationClient.send(
                                         "\(notifTool)-\(threshold.rawValue)", title, body
                                     )
-                                    notificationClient.markNotified(notifTool, threshold.rawValue)
+                                    notificationClient.markNotified(notifTool, threshold.rawValue, resetCycle)
                                 }
                             }
                         }
@@ -236,13 +271,13 @@ struct MenuBarFeature {
                             let compThresholds = UsageThreshold.reached(by: compUsedPct)
                             for threshold in compThresholds {
                                 let notifTool = "\(tool.id)-completions"
-                                if !notificationClient.hasNotified(notifTool, threshold.rawValue) {
+                                if !notificationClient.hasNotified(notifTool, threshold.rawValue, resetCycle) {
                                     let title = threshold.title(for: "\(tool.displayName) Completions")
                                     let body = threshold.body(usagePercent: compUsedPct)
                                     try await notificationClient.send(
                                         "\(notifTool)-\(threshold.rawValue)", title, body
                                     )
-                                    notificationClient.markNotified(notifTool, threshold.rawValue)
+                                    notificationClient.markNotified(notifTool, threshold.rawValue, resetCycle)
                                 }
                             }
                         }
@@ -251,13 +286,130 @@ struct MenuBarFeature {
                         let usedPct = Int(round(summary.usagePercentage * 100))
                         let thresholds = UsageThreshold.reached(by: usedPct)
                         for threshold in thresholds {
-                            if !notificationClient.hasNotified(tool.id, threshold.rawValue) {
+                            if !notificationClient.hasNotified(tool.id, threshold.rawValue, resetCycle) {
                                 let title = threshold.title(for: tool.displayName)
                                 let body = threshold.body(usagePercent: usedPct)
                                 try await notificationClient.send(
                                     "\(tool.id)-\(threshold.rawValue)", title, body
                                 )
-                                notificationClient.markNotified(tool.id, threshold.rawValue)
+                                notificationClient.markNotified(tool.id, threshold.rawValue, resetCycle)
+                            }
+                        }
+                    }
+                } catch: { _, _ in }
+
+            // MARK: - Claude Code
+
+            case .detectClaudeCredentials:
+                state.isClaudeLoading = true
+                state.claudeErrorMessage = nil
+                return .run { send in
+                    @Dependency(\.claudeAPIClient) var claudeClient
+                    guard let credentials = try claudeClient.loadCredentials() else {
+                        await send(.claudeUsageFailed("notDetected"))
+                        return
+                    }
+                    // Refresh token if needed
+                    let refreshed = try await claudeClient.refreshTokenIfNeeded(credentials)
+                    // Fetch usage
+                    let response = try await claudeClient.fetchUsage(refreshed.accessToken)
+                    let summary = ClaudeUsageSummary(
+                        subscriptionType: refreshed.subscriptionType,
+                        response: response
+                    )
+                    await send(.claudeUsageResponse(summary))
+                } catch: { error, send in
+                    await send(.claudeUsageFailed(error.localizedDescription))
+                }
+
+            case .fetchClaudeUsage:
+                state.isClaudeLoading = true
+                state.claudeErrorMessage = nil
+                return .run { send in
+                    @Dependency(\.claudeAPIClient) var claudeClient
+                    guard let credentials = try claudeClient.loadCredentials() else {
+                        await send(.claudeUsageFailed("notDetected"))
+                        return
+                    }
+                    let refreshed = try await claudeClient.refreshTokenIfNeeded(credentials)
+                    let response = try await claudeClient.fetchUsage(refreshed.accessToken)
+                    let summary = ClaudeUsageSummary(
+                        subscriptionType: refreshed.subscriptionType,
+                        response: response
+                    )
+                    await send(.claudeUsageResponse(summary))
+                } catch: { error, send in
+                    await send(.claudeUsageFailed(error.localizedDescription))
+                }
+
+            case let .claudeUsageResponse(summary):
+                state.isClaudeLoading = false
+                state.claudeConnectionState = .connected(subscriptionType: summary.subscriptionType)
+                state.claudeUsageSummary = summary
+                return .send(.checkClaudeUsageThresholds)
+
+            case let .claudeUsageFailed(message):
+                state.isClaudeLoading = false
+                if message == "notDetected" {
+                    state.claudeConnectionState = .notDetected
+                    state.claudeErrorMessage = nil
+                } else {
+                    state.claudeErrorMessage = message
+                }
+                return .none
+
+            case .checkClaudeUsageThresholds:
+                guard let summary = state.claudeUsageSummary else { return .none }
+                return .run { _ in
+                    @Dependency(\.notificationClient) var notificationClient
+
+                    // Session (5h)
+                    if let pct = summary.sessionUtilization,
+                       let resetCycle = summary.sessionResetsAt {
+                        let thresholds = UsageThreshold.reached(by: pct)
+                        for threshold in thresholds {
+                            let toolWindow = "claudeCode-session"
+                            if !notificationClient.hasNotified(toolWindow, threshold.rawValue, resetCycle) {
+                                let title = threshold.title(for: "Claude Code Session")
+                                let body = threshold.body(usagePercent: pct)
+                                try await notificationClient.send(
+                                    "\(toolWindow)-\(threshold.rawValue)", title, body
+                                )
+                                notificationClient.markNotified(toolWindow, threshold.rawValue, resetCycle)
+                            }
+                        }
+                    }
+
+                    // Weekly (7d)
+                    if let pct = summary.weeklyUtilization,
+                       let resetCycle = summary.weeklyResetsAt {
+                        let thresholds = UsageThreshold.reached(by: pct)
+                        for threshold in thresholds {
+                            let toolWindow = "claudeCode-weekly"
+                            if !notificationClient.hasNotified(toolWindow, threshold.rawValue, resetCycle) {
+                                let title = threshold.title(for: "Claude Code Weekly")
+                                let body = threshold.body(usagePercent: pct)
+                                try await notificationClient.send(
+                                    "\(toolWindow)-\(threshold.rawValue)", title, body
+                                )
+                                notificationClient.markNotified(toolWindow, threshold.rawValue, resetCycle)
+                            }
+                        }
+                    }
+
+                    // Opus (7d)
+                    if let pct = summary.opusUtilization,
+                       let resetCycle = summary.opusResetsAt {
+                        let thresholds = UsageThreshold.reached(by: pct)
+                        for threshold in thresholds {
+                            let toolWindow = "claudeCode-opus"
+                            if !notificationClient.hasNotified(toolWindow, threshold.rawValue, resetCycle) {
+                                let title = threshold.title(for: "Claude Code Opus")
+                                let body = threshold.body(usagePercent: pct)
+                                try await notificationClient.send(
+                                    "\(toolWindow)-\(threshold.rawValue)", title, body
+                                )
+                                notificationClient.markNotified(toolWindow, threshold.rawValue, resetCycle)
                             }
                         }
                     }
@@ -269,7 +421,6 @@ struct MenuBarFeature {
                 return .none
                 
             case let .toggleToolExpansion(tool):
-                // Only available tools can be expanded; coming soon tools are not expandable.
                 guard tool.isAvailable else { return .none }
                 if state.expandedTool == tool {
                     state.expandedTool = nil
@@ -300,6 +451,10 @@ struct MenuBarFeature {
                 
             case .dismissError:
                 state.errorMessage = nil
+                return .none
+
+            case .dismissClaudeError:
+                state.claudeErrorMessage = nil
                 return .none
                 
             case .quitApp:

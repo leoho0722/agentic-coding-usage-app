@@ -4,8 +4,8 @@ import ArgumentParser
 struct AgenticCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "agentic",
-        abstract: "Monitor your AI coding assistant premium request usage.",
-        version: "1.0.0",
+        abstract: "Monitor your AI coding assistant usage (GitHub Copilot, Claude Code, and more).",
+        version: "1.4.0",
         subcommands: [LoginCommand.self, UsageCommand.self],
         defaultSubcommand: UsageCommand.self
     )

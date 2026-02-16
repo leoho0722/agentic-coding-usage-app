@@ -69,3 +69,27 @@ extension DependencyValues {
         set { self[KeychainService.self] = newValue }
     }
 }
+
+// MARK: - ClaudeAPIClient Dependency
+
+extension ClaudeAPIClient: @retroactive TestDependencyKey {
+    public static let testValue = ClaudeAPIClient(
+        loadCredentials: { nil },
+        refreshTokenIfNeeded: { current in current },
+        fetchUsage: { _ in
+            ClaudeUsageResponse(
+                fiveHour: ClaudeUsagePeriod(utilization: 25, resetsAt: "2026-02-16T20:00:00Z"),
+                sevenDay: ClaudeUsagePeriod(utilization: 40, resetsAt: "2026-02-20T00:00:00Z"),
+                sevenDayOpus: nil,
+                extraUsage: nil
+            )
+        }
+    )
+}
+
+extension DependencyValues {
+    public var claudeAPIClient: ClaudeAPIClient {
+        get { self[ClaudeAPIClient.self] }
+        set { self[ClaudeAPIClient.self] = newValue }
+    }
+}

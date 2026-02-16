@@ -5,23 +5,70 @@ import Foundation
 struct UsageCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "usage",
-        abstract: "Show your GitHub Copilot premium request usage for this month."
+        abstract: "Show your AI coding assistant usage for the current period."
     )
 
-    func run() async throws {
-        let keychain = KeychainService.live
-        let apiClient = GitHubAPIClient.live
+    @Option(name: .long, help: "Tool to show usage for: copilot, claude, or all (default: all).")
+    var tool: String = "all"
 
-        // Load token
-        guard let token = try keychain.loadAccessToken() else {
-            print("Error: Not logged in. Run 'agentic login' first.")
+    func run() async throws {
+        let toolFilter = tool.lowercased()
+
+        guard ["all", "copilot", "claude"].contains(toolFilter) else {
+            print("Error: Unknown tool '\(tool)'. Use 'copilot', 'claude', or 'all'.")
             throw ExitCode.failure
         }
 
-        // Fetch user
-        let user = try await apiClient.fetchUser(token)
+        var printed = false
 
-        // Fetch Copilot status (plan + usage) via internal API
+        // Copilot
+        if toolFilter == "all" || toolFilter == "copilot" {
+            do {
+                try await printCopilotUsage()
+                printed = true
+            } catch {
+                if toolFilter == "copilot" {
+                    throw error
+                }
+                // In "all" mode, just print the error and continue
+                print("  [Copilot] \(error.localizedDescription)")
+                print()
+            }
+        }
+
+        // Claude Code
+        if toolFilter == "all" || toolFilter == "claude" {
+            if printed { print(String(repeating: "─", count: 40)); print() }
+            do {
+                try await printClaudeUsage()
+                printed = true
+            } catch {
+                if toolFilter == "claude" {
+                    throw error
+                }
+                print("  [Claude Code] \(error.localizedDescription)")
+                print()
+            }
+        }
+
+        if !printed {
+            print("No usage data available. Make sure you're logged in.")
+            throw ExitCode.failure
+        }
+    }
+
+    // MARK: - Copilot
+
+    private func printCopilotUsage() async throws {
+        let keychain = KeychainService.live
+        let apiClient = GitHubAPIClient.live
+
+        guard let token = try keychain.loadAccessToken() else {
+            print("  [Copilot] Not logged in. Run 'agentic login' first.")
+            return
+        }
+
+        let user = try await apiClient.fetchUser(token)
         let status = try await apiClient.fetchCopilotStatus(token)
         let plan = CopilotPlan.fromAPIString(status.copilotPlan)
         let daysUntilReset = DateUtils.daysUntilReset()
@@ -46,11 +93,10 @@ struct UsageCommand: AsyncParsableCommand {
             )
         }
 
-        // Display
-        printUsage(user: user, summary: summary)
+        printCopilotDisplay(user: user, summary: summary)
     }
 
-    private func printUsage(user: GitHubUser, summary: CopilotUsageSummary) {
+    private func printCopilotDisplay(user: GitHubUser, summary: CopilotUsageSummary) {
         let barWidth = 30
 
         print()
@@ -60,7 +106,6 @@ struct UsageCommand: AsyncParsableCommand {
         print()
 
         if summary.isFreeTier {
-            // Free tier: show chat and completions
             if let chatRemaining = summary.freeChatRemaining,
                let chatTotal = summary.freeChatTotal, chatTotal > 0
             {
@@ -84,7 +129,6 @@ struct UsageCommand: AsyncParsableCommand {
                 print("               \(compUsed) / \(compTotal)  (\(compRemaining) remaining)")
             }
         } else {
-            // Paid tier: show premium requests
             let percentage = Int(summary.usagePercentage * 100)
             let filledCount = min(barWidth, Int(Double(barWidth) * summary.usagePercentage))
             let emptyCount = barWidth - filledCount
@@ -96,5 +140,79 @@ struct UsageCommand: AsyncParsableCommand {
         print()
         print("  Resets in: \(summary.daysUntilReset) days")
         print()
+    }
+
+    // MARK: - Claude Code
+
+    private func printClaudeUsage() async throws {
+        let claudeClient = ClaudeAPIClient.live
+
+        guard let credentials = try claudeClient.loadCredentials() else {
+            print("  [Claude Code] Credentials not found. Run 'claude login' in terminal first.")
+            return
+        }
+
+        let refreshed = try await claudeClient.refreshTokenIfNeeded(credentials)
+        let response = try await claudeClient.fetchUsage(refreshed.accessToken)
+        let summary = ClaudeUsageSummary(
+            subscriptionType: refreshed.subscriptionType,
+            response: response
+        )
+
+        printClaudeDisplay(summary: summary)
+    }
+
+    private func printClaudeDisplay(summary: ClaudeUsageSummary) {
+        let barWidth = 30
+
+        print()
+        print("  Claude Code Usage")
+        print("  Plan: \(summary.planDisplayName)")
+        print()
+
+        // Session (5h)
+        if let pct = summary.sessionUtilization {
+            printClaudeBar(label: "Session (5h)", percentage: pct, barWidth: barWidth)
+            if let resetsAt = summary.sessionResetsAt {
+                let countdown = ClaudeUsagePeriod(utilization: pct, resetsAt: resetsAt).resetCountdown ?? "?"
+                print("               Resets in: \(countdown)")
+            }
+        }
+
+        // Weekly (7d)
+        if let pct = summary.weeklyUtilization {
+            printClaudeBar(label: "Weekly  (7d)", percentage: pct, barWidth: barWidth)
+            if let resetsAt = summary.weeklyResetsAt {
+                let countdown = ClaudeUsagePeriod(utilization: pct, resetsAt: resetsAt).resetCountdown ?? "?"
+                print("               Resets in: \(countdown)")
+            }
+        }
+
+        // Opus (7d) — only if present
+        if let pct = summary.opusUtilization {
+            printClaudeBar(label: "Opus    (7d)", percentage: pct, barWidth: barWidth)
+            if let resetsAt = summary.opusResetsAt {
+                let countdown = ClaudeUsagePeriod(utilization: pct, resetsAt: resetsAt).resetCountdown ?? "?"
+                print("               Resets in: \(countdown)")
+            }
+        }
+
+        // Extra Usage
+        if summary.hasExtraUsage,
+           let used = summary.extraUsageUsedDollars,
+           let limit = summary.extraUsageLimitDollars
+        {
+            print(String(format: "  Extra Usage: $%.2f / $%.2f", used, limit))
+        }
+
+        print()
+    }
+
+    private func printClaudeBar(label: String, percentage: Int, barWidth: Int) {
+        let fraction = Double(percentage) / 100.0
+        let filled = min(barWidth, Int(Double(barWidth) * fraction))
+        let empty = barWidth - filled
+        let bar = String(repeating: "#", count: filled) + String(repeating: "-", count: empty)
+        print("  \(label): [\(bar)] \(percentage)%")
     }
 }
