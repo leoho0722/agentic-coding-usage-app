@@ -1059,12 +1059,3 @@ struct MenuBarView: View {
         }
     }
 }
-
-// MARK: - Bundle + Version
-
-extension Bundle {
-    /// `CFBundleShortVersionString` (e.g. "1.2.0"), falling back to "–" if missing.
-    var shortVersionString: String {
-        infoDictionary?["CFBundleShortVersionString"] as? String ?? "–"
-    }
-}

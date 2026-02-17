@@ -4,5 +4,9 @@
 <dict>
 	<key>GitHubClientID</key>
 	<string>$(GITHUB_CLIENT_ID)</string>
+	<key>ClaudeClientID</key>
+	<string>$(CLAUDE_CLIENT_ID)</string>
+	<key>CodexClientID</key>
+	<string>$(CODEX_CLIENT_ID)</string>
 </dict>
 </plist>

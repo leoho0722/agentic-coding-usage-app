@@ -19,8 +19,8 @@ struct AgenticUsageApp: App {
         $0.keychainService = .live
         $0.pasteboard = .live
         $0.notificationClient = .live
-        $0.claudeAPIClient = .live
-        $0.codexAPIClient = .live
+        $0.claudeAPIClient = .live(clientID: bundleString("ClaudeClientID"))
+        $0.codexAPIClient = .live(clientID: bundleString("CodexClientID"))
     }
 
     var body: some Scene {
@@ -30,5 +30,19 @@ struct AgenticUsageApp: App {
             Label("AgenticUsage", systemImage: "chart.bar.fill")
         }
         .menuBarExtraStyle(.window)
+    }
+}
+
+// MARK: - Private Method
+
+private extension AgenticUsageApp {
+    
+    static func bundleString(_ key: String) -> String {
+        guard let value = Bundle.getValue(from: .main, with: key), !value.isEmpty else {
+            fatalError(
+                "\(key) not configured. Copy Secrets.xcconfig.template to Secrets.xcconfig and set your values."
+            )
+        }
+        return value
     }
 }

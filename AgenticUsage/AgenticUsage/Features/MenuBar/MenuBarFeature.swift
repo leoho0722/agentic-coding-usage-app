@@ -113,7 +113,7 @@ struct MenuBarFeature {
     static let gitHubClientID: String = {
         guard let clientID = Bundle.main.infoDictionary?["GitHubClientID"] as? String,
               !clientID.isEmpty,
-              clientID != "YOUR_CLIENT_ID_HERE" else {
+              clientID != "YOUR_GITHUB_CLIENT_ID_HERE" else {
             fatalError(
                 "GitHubClientID not configured. Copy Secrets.xcconfig.template to Secrets.xcconfig and set your GitHub OAuth App client ID."
             )

@@ -57,10 +57,10 @@ public struct ClaudeTokenRefreshRequest: Codable, Sendable {
         case scope
     }
 
-    public init(refreshToken: String) {
+    public init(refreshToken: String, clientID: String) {
         self.grantType = "refresh_token"
         self.refreshToken = refreshToken
-        self.clientId = ClaudeConstants.clientID
+        self.clientId = clientID
         self.scope = ClaudeConstants.scopes
     }
 }
@@ -82,8 +82,6 @@ public struct ClaudeTokenRefreshResponse: Codable, Sendable {
 // MARK: - Constants
 
 public enum ClaudeConstants {
-    /// Claude Code's own OAuth client ID (public, used for token refresh).
-    public static let clientID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
     public static let scopes = "user:profile user:inference user:sessions:claude_code user:mcp_servers"
     /// Credential file path relative to home directory.
     public static let credentialRelativePath = ".claude/.credentials.json"

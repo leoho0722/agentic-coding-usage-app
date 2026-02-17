@@ -59,7 +59,8 @@ public enum ClaudeAPIError: LocalizedError, Sendable {
 // MARK: - Live Implementation
 
 extension ClaudeAPIClient {
-    public static let live = ClaudeAPIClient(
+    public static func live(clientID: String) -> ClaudeAPIClient {
+        ClaudeAPIClient(
         loadCredentials: {
             // 1. Try file first
             let homeDir = FileManager.default.homeDirectoryForCurrentUser
@@ -105,7 +106,7 @@ extension ClaudeAPIClient {
                 throw ClaudeAPIError.noRefreshToken
             }
 
-            let refreshRequest = ClaudeTokenRefreshRequest(refreshToken: refreshToken)
+            let refreshRequest = ClaudeTokenRefreshRequest(refreshToken: refreshToken, clientID: clientID)
             var request = URLRequest(url: URL(string: ClaudeConstants.refreshURL)!)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -180,6 +181,7 @@ extension ClaudeAPIClient {
             }
         }
     )
+    }
 }
 
 // MARK: - Write-back Helper

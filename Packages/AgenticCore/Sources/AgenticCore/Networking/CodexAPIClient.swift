@@ -58,7 +58,8 @@ public enum CodexAPIError: LocalizedError, Sendable {
 // MARK: - Live Implementation
 
 extension CodexAPIClient {
-    public static let live = CodexAPIClient(
+    public static func live(clientID: String) -> CodexAPIClient {
+        CodexAPIClient(
         loadCredentials: {
             let fileManager = FileManager.default
             let homeDir = fileManager.homeDirectoryForCurrentUser
@@ -121,7 +122,7 @@ extension CodexAPIClient {
 
             let bodyParams = [
                 "grant_type=refresh_token",
-                "client_id=\(CodexConstants.clientID)",
+                "client_id=\(clientID)",
                 "refresh_token=\(refreshToken)",
             ].joined(separator: "&")
             request.httpBody = bodyParams.data(using: .utf8)
@@ -196,6 +197,7 @@ extension CodexAPIClient {
             }
         }
     )
+    }
 }
 
 // MARK: - Private Helpers

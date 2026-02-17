@@ -159,7 +159,14 @@ struct UsageCommand: AsyncParsableCommand {
     // MARK: - Claude Code
 
     private func printClaudeUsage() async throws {
-        let claudeClient = ClaudeAPIClient.live
+        guard let clientID = ProcessInfo.processInfo.environment["AGENTIC_CLAUDE_CLIENT_ID"],
+              !clientID.isEmpty
+        else {
+            print("  [Claude Code] AGENTIC_CLAUDE_CLIENT_ID environment variable is required.")
+            print("  Set it to Claude Code's OAuth client ID for token refresh.")
+            return
+        }
+        let claudeClient = ClaudeAPIClient.live(clientID: clientID)
 
         guard let credentials = try claudeClient.loadCredentials() else {
             print("  [Claude Code] Credentials not found. Run 'claude login' in terminal first.")
@@ -186,7 +193,7 @@ struct UsageCommand: AsyncParsableCommand {
 
         // Session (5h)
         if let pct = summary.sessionUtilization {
-            printClaudeBar(label: "Session (5h)", percentage: pct, barWidth: barWidth)
+            printProgressBar(label: "Session (5h)", percentage: pct, barWidth: barWidth)
             if let resetsAt = summary.sessionResetsAt {
                 let countdown = ClaudeUsagePeriod(utilization: pct, resetsAt: resetsAt).resetCountdown ?? "?"
                 print("               Resets in: \(countdown)")
@@ -195,7 +202,7 @@ struct UsageCommand: AsyncParsableCommand {
 
         // Weekly (7d)
         if let pct = summary.weeklyUtilization {
-            printClaudeBar(label: "Weekly  (7d)", percentage: pct, barWidth: barWidth)
+            printProgressBar(label: "Weekly  (7d)", percentage: pct, barWidth: barWidth)
             if let resetsAt = summary.weeklyResetsAt {
                 let countdown = ClaudeUsagePeriod(utilization: pct, resetsAt: resetsAt).resetCountdown ?? "?"
                 print("               Resets in: \(countdown)")
@@ -204,7 +211,7 @@ struct UsageCommand: AsyncParsableCommand {
 
         // Opus (7d) — only if present
         if let pct = summary.opusUtilization {
-            printClaudeBar(label: "Opus    (7d)", percentage: pct, barWidth: barWidth)
+            printProgressBar(label: "Opus    (7d)", percentage: pct, barWidth: barWidth)
             if let resetsAt = summary.opusResetsAt {
                 let countdown = ClaudeUsagePeriod(utilization: pct, resetsAt: resetsAt).resetCountdown ?? "?"
                 print("               Resets in: \(countdown)")
@@ -230,14 +237,17 @@ struct UsageCommand: AsyncParsableCommand {
         print("  \(label): [\(bar)] \(percentage)%")
     }
 
-    private func printClaudeBar(label: String, percentage: Int, barWidth: Int) {
-        printProgressBar(label: label, percentage: percentage, barWidth: barWidth)
-    }
-
     // MARK: - Codex
 
     private func printCodexUsage() async throws {
-        let codexClient = CodexAPIClient.live
+        guard let clientID = ProcessInfo.processInfo.environment["AGENTIC_CODEX_CLIENT_ID"],
+              !clientID.isEmpty
+        else {
+            print("  [Codex] AGENTIC_CODEX_CLIENT_ID environment variable is required.")
+            print("  Set it to Codex's OAuth client ID for token refresh.")
+            return
+        }
+        let codexClient = CodexAPIClient.live(clientID: clientID)
 
         guard let credentials = try codexClient.loadCredentials() else {
             print("  [Codex] Credentials not found. Run 'codex auth login' in terminal first.")

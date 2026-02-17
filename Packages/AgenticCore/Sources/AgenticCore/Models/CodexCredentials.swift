@@ -88,8 +88,6 @@ public struct CodexTokenRefreshResponse: Codable, Sendable {
 // MARK: - Constants
 
 public enum CodexConstants {
-    /// Codex's OAuth client ID (public, used for token refresh).
-    public static let clientID = "app_EMoamEEZ73f0CkXaXp7hrann"
     /// Primary credential file path relative to home directory.
     public static let credentialRelativePath = ".config/codex/auth.json"
     /// Fallback credential file path relative to home directory.
