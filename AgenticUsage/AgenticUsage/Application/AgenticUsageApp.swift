@@ -20,6 +20,7 @@ struct AgenticUsageApp: App {
         $0.pasteboard = .live
         $0.notificationClient = .live
         $0.claudeAPIClient = .live
+        $0.codexAPIClient = .live
     }
 
     var body: some Scene {

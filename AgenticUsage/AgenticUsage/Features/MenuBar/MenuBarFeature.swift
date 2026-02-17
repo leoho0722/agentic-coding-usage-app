@@ -23,6 +23,12 @@ struct MenuBarFeature {
         var isClaudeLoading: Bool = false
         var claudeErrorMessage: String?
 
+        // Codex
+        var codexConnectionState: CodexConnectionState = .notDetected
+        var codexUsageSummary: CodexUsageSummary?
+        var isCodexLoading: Bool = false
+        var codexErrorMessage: String?
+
         /// Which tool card is currently expanded (accordion). Defaults to Copilot on launch.
         var expandedTool: ToolKind? = .copilot
     }
@@ -48,6 +54,13 @@ struct MenuBarFeature {
         case notDetected
         /// Credentials found and usage loaded.
         case connected(subscriptionType: String?)
+    }
+
+    enum CodexConnectionState: Equatable, Sendable {
+        /// No credentials found on disk / Keychain.
+        case notDetected
+        /// Credentials found and usage loaded.
+        case connected(planType: String?)
     }
     
     // MARK: - Action
@@ -77,13 +90,21 @@ struct MenuBarFeature {
         case claudeUsageFailed(String)
         case checkClaudeUsageThresholds
 
+        // Codex
+        case detectCodexCredentials
+        case fetchCodexUsage
+        case codexUsageResponse(CodexUsageSummary)
+        case codexUsageFailed(String)
+        case checkCodexUsageThresholds
+
         // UI
         case toggleToolExpansion(ToolKind)
-        
+
         case openVerificationURL
         case copyUserCode
         case dismissError
         case dismissClaudeError
+        case dismissCodexError
         case quitApp
     }
     
@@ -120,6 +141,7 @@ struct MenuBarFeature {
                 return .merge(
                     .send(.checkExistingAuth),
                     .send(.detectClaudeCredentials),
+                    .send(.detectCodexCredentials),
                     .send(.requestNotificationAuthorization)
                 )
                 
@@ -414,7 +436,115 @@ struct MenuBarFeature {
                         }
                     }
                 } catch: { _, _ in }
-                
+
+            // MARK: - Codex
+
+            case .detectCodexCredentials:
+                state.isCodexLoading = true
+                state.codexErrorMessage = nil
+                return .run { send in
+                    @Dependency(\.codexAPIClient) var codexClient
+                    guard let credentials = try codexClient.loadCredentials() else {
+                        await send(.codexUsageFailed("notDetected"))
+                        return
+                    }
+                    let refreshed = try await codexClient.refreshTokenIfNeeded(credentials)
+                    let (headers, response) = try await codexClient.fetchUsage(
+                        refreshed.accessToken, refreshed.accountId
+                    )
+                    let summary = CodexUsageSummary(headers: headers, response: response)
+                    await send(.codexUsageResponse(summary))
+                } catch: { error, send in
+                    // Retry on 401: force refresh and try again
+                    if let apiError = error as? CodexAPIError,
+                       case let .httpError(statusCode, _) = apiError,
+                       statusCode == 401
+                    {
+                        await send(.fetchCodexUsage)
+                    } else {
+                        await send(.codexUsageFailed(error.localizedDescription))
+                    }
+                }
+
+            case .fetchCodexUsage:
+                state.isCodexLoading = true
+                state.codexErrorMessage = nil
+                return .run { send in
+                    @Dependency(\.codexAPIClient) var codexClient
+                    guard let credentials = try codexClient.loadCredentials() else {
+                        await send(.codexUsageFailed("notDetected"))
+                        return
+                    }
+                    let refreshed = try await codexClient.refreshTokenIfNeeded(credentials)
+                    let (headers, response) = try await codexClient.fetchUsage(
+                        refreshed.accessToken, refreshed.accountId
+                    )
+                    let summary = CodexUsageSummary(headers: headers, response: response)
+                    await send(.codexUsageResponse(summary))
+                } catch: { error, send in
+                    await send(.codexUsageFailed(error.localizedDescription))
+                }
+
+            case let .codexUsageResponse(summary):
+                state.isCodexLoading = false
+                state.codexConnectionState = .connected(planType: summary.planType)
+                state.codexUsageSummary = summary
+                return .send(.checkCodexUsageThresholds)
+
+            case let .codexUsageFailed(message):
+                state.isCodexLoading = false
+                if message == "notDetected" {
+                    state.codexConnectionState = .notDetected
+                    state.codexErrorMessage = nil
+                } else {
+                    state.codexErrorMessage = message
+                }
+                return .none
+
+            case .checkCodexUsageThresholds:
+                guard let summary = state.codexUsageSummary else { return .none }
+                return .run { _ in
+                    @Dependency(\.notificationClient) var notificationClient
+
+                    // Session (5h)
+                    if let pct = summary.sessionUsedPercent,
+                       let resetAt = summary.sessionResetAt
+                    {
+                        let resetCycle = String(Int(resetAt.timeIntervalSince1970))
+                        let thresholds = UsageThreshold.reached(by: pct)
+                        for threshold in thresholds {
+                            let toolWindow = "codex-session"
+                            if !notificationClient.hasNotified(toolWindow, threshold.rawValue, resetCycle) {
+                                let title = threshold.title(for: "Codex Session")
+                                let body = threshold.body(usagePercent: pct)
+                                try await notificationClient.send(
+                                    "\(toolWindow)-\(threshold.rawValue)", title, body
+                                )
+                                notificationClient.markNotified(toolWindow, threshold.rawValue, resetCycle)
+                            }
+                        }
+                    }
+
+                    // Weekly (7d)
+                    if let pct = summary.weeklyUsedPercent,
+                       let resetAt = summary.weeklyResetAt
+                    {
+                        let resetCycle = String(Int(resetAt.timeIntervalSince1970))
+                        let thresholds = UsageThreshold.reached(by: pct)
+                        for threshold in thresholds {
+                            let toolWindow = "codex-weekly"
+                            if !notificationClient.hasNotified(toolWindow, threshold.rawValue, resetCycle) {
+                                let title = threshold.title(for: "Codex Weekly")
+                                let body = threshold.body(usagePercent: pct)
+                                try await notificationClient.send(
+                                    "\(toolWindow)-\(threshold.rawValue)", title, body
+                                )
+                                notificationClient.markNotified(toolWindow, threshold.rawValue, resetCycle)
+                            }
+                        }
+                    }
+                } catch: { _, _ in }
+
             case let .usageFailed(message):
                 state.isLoading = false
                 state.errorMessage = message
@@ -455,6 +585,10 @@ struct MenuBarFeature {
 
             case .dismissClaudeError:
                 state.claudeErrorMessage = nil
+                return .none
+
+            case .dismissCodexError:
+                state.codexErrorMessage = nil
                 return .none
                 
             case .quitApp:

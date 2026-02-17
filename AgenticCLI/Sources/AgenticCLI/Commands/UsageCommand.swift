@@ -8,14 +8,14 @@ struct UsageCommand: AsyncParsableCommand {
         abstract: "Show your AI coding assistant usage for the current period."
     )
 
-    @Option(name: .long, help: "Tool to show usage for: copilot, claude, or all (default: all).")
+    @Option(name: .long, help: "Tool to show usage for: copilot, claude, codex, or all (default: all).")
     var tool: String = "all"
 
     func run() async throws {
         let toolFilter = tool.lowercased()
 
-        guard ["all", "copilot", "claude"].contains(toolFilter) else {
-            print("Error: Unknown tool '\(tool)'. Use 'copilot', 'claude', or 'all'.")
+        guard ["all", "copilot", "claude", "codex"].contains(toolFilter) else {
+            print("Error: Unknown tool '\(tool)'. Use 'copilot', 'claude', 'codex', or 'all'.")
             throw ExitCode.failure
         }
 
@@ -30,7 +30,6 @@ struct UsageCommand: AsyncParsableCommand {
                 if toolFilter == "copilot" {
                     throw error
                 }
-                // In "all" mode, just print the error and continue
                 print("  [Copilot] \(error.localizedDescription)")
                 print()
             }
@@ -47,6 +46,21 @@ struct UsageCommand: AsyncParsableCommand {
                     throw error
                 }
                 print("  [Claude Code] \(error.localizedDescription)")
+                print()
+            }
+        }
+
+        // Codex
+        if toolFilter == "all" || toolFilter == "codex" {
+            if printed { print(String(repeating: "─", count: 40)); print() }
+            do {
+                try await printCodexUsage()
+                printed = true
+            } catch {
+                if toolFilter == "codex" {
+                    throw error
+                }
+                print("  [Codex] \(error.localizedDescription)")
                 print()
             }
         }
@@ -208,11 +222,92 @@ struct UsageCommand: AsyncParsableCommand {
         print()
     }
 
-    private func printClaudeBar(label: String, percentage: Int, barWidth: Int) {
+    private func printProgressBar(label: String, percentage: Int, barWidth: Int) {
         let fraction = Double(percentage) / 100.0
         let filled = min(barWidth, Int(Double(barWidth) * fraction))
         let empty = barWidth - filled
         let bar = String(repeating: "#", count: filled) + String(repeating: "-", count: empty)
         print("  \(label): [\(bar)] \(percentage)%")
+    }
+
+    private func printClaudeBar(label: String, percentage: Int, barWidth: Int) {
+        printProgressBar(label: label, percentage: percentage, barWidth: barWidth)
+    }
+
+    // MARK: - Codex
+
+    private func printCodexUsage() async throws {
+        let codexClient = CodexAPIClient.live
+
+        guard let credentials = try codexClient.loadCredentials() else {
+            print("  [Codex] Credentials not found. Run 'codex auth login' in terminal first.")
+            return
+        }
+
+        let refreshed = try await codexClient.refreshTokenIfNeeded(credentials)
+        let (headers, response) = try await codexClient.fetchUsage(
+            refreshed.accessToken, refreshed.accountId
+        )
+        let summary = CodexUsageSummary(headers: headers, response: response)
+
+        printCodexDisplay(summary: summary)
+    }
+
+    private func printCodexDisplay(summary: CodexUsageSummary) {
+        let barWidth = 30
+
+        print()
+        print("  OpenAI Codex Usage")
+        print("  Plan: \(summary.planDisplayName)")
+        print()
+
+        // Session (5h)
+        if let pct = summary.sessionUsedPercent {
+            printProgressBar(label: "Session (5h)", percentage: pct, barWidth: barWidth)
+            if let countdown = summary.sessionResetAt?.countdownString {
+                print("               Resets in: \(countdown)")
+            }
+        }
+
+        // Weekly (7d)
+        if let pct = summary.weeklyUsedPercent {
+            printProgressBar(label: "Weekly  (7d)", percentage: pct, barWidth: barWidth)
+            if let countdown = summary.weeklyResetAt?.countdownString {
+                print("               Resets in: \(countdown)")
+            }
+        }
+
+        // Per-model additional limits
+        for limit in summary.additionalLimits {
+            if let pct = limit.sessionUsedPercent {
+                let label = String(format: "%-12s", ("\(limit.shortDisplayName) (5h)" as NSString).utf8String!)
+                printProgressBar(label: label, percentage: pct, barWidth: barWidth)
+                if let countdown = limit.sessionResetAt?.countdownString {
+                    print("               Resets in: \(countdown)")
+                }
+            }
+            if let pct = limit.weeklyUsedPercent {
+                let label = String(format: "%-12s", ("\(limit.shortDisplayName) (7d)" as NSString).utf8String!)
+                printProgressBar(label: label, percentage: pct, barWidth: barWidth)
+                if let countdown = limit.weeklyResetAt?.countdownString {
+                    print("               Resets in: \(countdown)")
+                }
+            }
+        }
+
+        // Code Reviews
+        if let pct = summary.codeReviewUsedPercent {
+            printProgressBar(label: "Reviews (7d)", percentage: pct, barWidth: barWidth)
+            if let countdown = summary.codeReviewResetAt?.countdownString {
+                print("               Resets in: \(countdown)")
+            }
+        }
+
+        // Credits
+        if let balance = summary.creditsBalance {
+            print(String(format: "  Credits:     %.0f / 1,000", balance))
+        }
+
+        print()
     }
 }

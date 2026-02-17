@@ -20,7 +20,10 @@ struct MenuBarView: View {
 
                     Divider()
                     claudeToolCard
-                    
+
+                    Divider()
+                    codexToolCard
+
                     ForEach(ToolKind.allCases.filter(\.isComingSoon)) { tool in
                         Divider()
                         comingSoonCard(tool: tool)
@@ -527,6 +530,282 @@ struct MenuBarView: View {
         case "free": .gray
         case "pro": .orange
         case "max", "pro_plus": .purple
+        default: .blue
+        }
+
+        Text(label)
+            .font(.system(.caption2, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(color, in: Capsule())
+    }
+
+    // MARK: - Codex Tool Card
+
+    @ViewBuilder
+    private var codexToolCard: some View {
+        let tool = ToolKind.codex
+        let isExpanded = store.expandedTool == tool
+
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                store.send(.toggleToolExpansion(tool))
+            } label: {
+                codexCardHeader(tool: tool, isExpanded: isExpanded)
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                Divider()
+                    .padding(.horizontal, 12)
+
+                codexExpandedContent
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func codexCardHeader(tool: ToolKind, isExpanded: Bool) -> some View {
+        HStack(spacing: 8) {
+            toolIcon(tool)
+
+            Text(tool.displayName)
+                .font(.subheadline)
+                .fontWeight(.medium)
+
+            codexStatusLabel
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                .animation(.easeInOut(duration: 0.15), value: isExpanded)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private var codexStatusLabel: some View {
+        switch store.codexConnectionState {
+        case .notDetected:
+            Group {
+                Text("|")
+                    .foregroundStyle(.quaternary)
+                Text("Not Detected")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.caption)
+
+        case let .connected(planType):
+            Group {
+                Text("|")
+                    .foregroundStyle(.quaternary)
+                Text("Connected")
+                    .foregroundStyle(.secondary)
+                if let plan = planType {
+                    codexPlanBadge(planType: plan)
+                }
+            }
+            .font(.caption)
+        }
+    }
+
+    @ViewBuilder
+    private var codexExpandedContent: some View {
+        switch store.codexConnectionState {
+        case .notDetected:
+            codexNotDetectedContent
+
+        case .connected:
+            codexConnectedContent
+        }
+    }
+
+    @ViewBuilder
+    private var codexNotDetectedContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("請先透過終端機登入 Codex")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Button("重新偵測") {
+                store.send(.detectCodexCredentials)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .disabled(store.isCodexLoading)
+        }
+        .padding(12)
+    }
+
+    @ViewBuilder
+    private var codexConnectedContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if store.isCodexLoading {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .controlSize(.small)
+                    Spacer()
+                }
+                .padding(12)
+            } else if let summary = store.codexUsageSummary {
+                codexUsageSummaryView(summary: summary)
+            }
+
+            // Error
+            if let error = store.codexErrorMessage {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.yellow)
+                    Text(error)
+                        .font(.caption2)
+                        .lineLimit(2)
+                    Spacer()
+                    Button {
+                        store.send(.dismissCodexError)
+                    } label: {
+                        Image(systemName: "xmark.circle")
+                    }
+                    .buttonStyle(.borderless)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+            }
+
+            Divider()
+                .padding(.horizontal, 12)
+
+            // Refresh button
+            HStack {
+                Button {
+                    store.send(.fetchCodexUsage)
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderless)
+                .disabled(store.isCodexLoading)
+
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+    }
+
+    // MARK: - Codex Usage Summary
+
+    @ViewBuilder
+    private func codexUsageSummaryView(summary: CodexUsageSummary) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Session (5h)
+            if let pct = summary.sessionUsedPercent {
+                codexProgressRow(
+                    label: "Session (5h)",
+                    usedPercent: pct,
+                    countdown: summary.sessionResetAt?.countdownString
+                )
+            }
+
+            // Weekly (7d)
+            if let pct = summary.weeklyUsedPercent {
+                codexProgressRow(
+                    label: "Weekly (7d)",
+                    usedPercent: pct,
+                    countdown: summary.weeklyResetAt?.countdownString
+                )
+            }
+
+            // Per-model additional limits
+            if summary.hasAdditionalLimits {
+                ForEach(Array(summary.additionalLimits.enumerated()), id: \.offset) { _, limit in
+                    if let pct = limit.sessionUsedPercent {
+                        codexProgressRow(
+                            label: "\(limit.shortDisplayName) (5h)",
+                            usedPercent: pct,
+                            countdown: limit.sessionResetAt?.countdownString
+                        )
+                    }
+                    if let pct = limit.weeklyUsedPercent {
+                        codexProgressRow(
+                            label: "\(limit.shortDisplayName) (7d)",
+                            usedPercent: pct,
+                            countdown: limit.weeklyResetAt?.countdownString
+                        )
+                    }
+                }
+            }
+
+            // Code Reviews (7d)
+            if let pct = summary.codeReviewUsedPercent {
+                codexProgressRow(
+                    label: "Code Reviews (7d)",
+                    usedPercent: pct,
+                    countdown: summary.codeReviewResetAt?.countdownString
+                )
+            }
+
+            // Credits
+            if let balance = summary.creditsBalance {
+                HStack {
+                    Text("Credits")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                    Spacer()
+                    Text(String(format: "%.0f / 1,000", balance))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(12)
+    }
+
+    @ViewBuilder
+    private func codexProgressRow(label: String, usedPercent: Int, countdown: String?) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                Spacer()
+                Text("\(usedPercent)%")
+                    .font(.caption)
+                    .foregroundStyle(progressColor(for: Double(usedPercent) / 100.0))
+                if let countdown {
+                    Text("· resets in \(countdown)")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            progressBar(percentage: Double(usedPercent) / 100.0)
+        }
+    }
+
+    @ViewBuilder
+    private func codexPlanBadge(planType: String) -> some View {
+        let display = planType.lowercased()
+        let label: String = switch display {
+        case "free": "Free"
+        case "plus": "Plus"
+        case "pro": "Pro"
+        case "team": "Team"
+        case "enterprise": "Enterprise"
+        default: display.capitalized
+        }
+        let color: Color = switch display {
+        case "free": .gray
+        case "plus": .blue
+        case "pro": .green
+        case "team": .orange
+        case "enterprise": .purple
         default: .blue
         }
 

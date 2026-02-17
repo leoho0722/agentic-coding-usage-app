@@ -1,5 +1,6 @@
 import AgenticCore
 import Dependencies
+import Foundation
 
 // MARK: - GitHubAPIClient Dependency
 
@@ -91,5 +92,36 @@ extension DependencyValues {
     public var claudeAPIClient: ClaudeAPIClient {
         get { self[ClaudeAPIClient.self] }
         set { self[ClaudeAPIClient.self] = newValue }
+    }
+}
+
+// MARK: - CodexAPIClient Dependency
+
+extension CodexAPIClient: @retroactive TestDependencyKey {
+    public static let testValue = CodexAPIClient(
+        loadCredentials: { nil },
+        refreshTokenIfNeeded: { current in current },
+        fetchUsage: { _, _ in
+            let headers = CodexUsageHeaders(
+                primaryUsedPercent: 30,
+                secondaryUsedPercent: 20,
+                creditsBalance: 950
+            )
+            let response = CodexUsageResponse(
+                rateLimit: CodexRateLimit(
+                    primaryWindow: CodexUsageWindow(usedPercent: 30, resetAt: Date().timeIntervalSince1970 + 18000),
+                    secondaryWindow: CodexUsageWindow(usedPercent: 20, resetAt: Date().timeIntervalSince1970 + 604800)
+                ),
+                planType: "plus"
+            )
+            return (headers, response)
+        }
+    )
+}
+
+extension DependencyValues {
+    public var codexAPIClient: CodexAPIClient {
+        get { self[CodexAPIClient.self] }
+        set { self[CodexAPIClient.self] = newValue }
     }
 }
