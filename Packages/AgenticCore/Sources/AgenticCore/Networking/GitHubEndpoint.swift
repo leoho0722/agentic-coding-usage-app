@@ -1,20 +1,25 @@
 import Foundation
 
-/// GitHub API endpoints used by AgenticUsage.
+// MARK: - GitHub 端點
+
+/// AgenticUsage 使用的 GitHub API 端點定義。
 public enum GitHubEndpoint: Sendable {
-    /// `GET /user` — authenticated user profile.
+    
+    /// `GET /user` -- 已驗證的使用者基本資料。
     case user
-    /// `GET /copilot_internal/user` — internal Copilot status (plan, quota snapshots).
+   
+    /// `GET /copilot_internal/user` -- Copilot 內部狀態（方案、配額快照）。
     case copilotStatus
 
-    // MARK: - OAuth Device Flow
+    // MARK: - OAuth 裝置流程
 
-    /// `POST https://github.com/login/device/code`
+    /// `POST https://github.com/login/device/code` -- 請求裝置驗證碼。
     case deviceCode(clientID: String)
-    /// `POST https://github.com/login/oauth/access_token`
+    
+    /// `POST https://github.com/login/oauth/access_token` -- 輪詢存取權杖。
     case pollAccessToken(clientID: String, deviceCode: String)
 
-    /// The full URL for this endpoint.
+    /// 此端點的完整 URL。
     public var url: URL {
         switch self {
         case .user:
@@ -31,7 +36,10 @@ public enum GitHubEndpoint: Sendable {
         }
     }
 
-    /// Build a `URLRequest` for this endpoint.
+    /// 建構此端點的 `URLRequest`。
+    ///
+    /// - Parameter accessToken: 選填的存取權杖，用於需要驗證的端點。
+    /// - Returns: 已設定好 HTTP 方法、標頭與 Body 的 `URLRequest`。
     public func makeRequest(accessToken: String? = nil) -> URLRequest {
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -49,7 +57,7 @@ public enum GitHubEndpoint: Sendable {
             if let accessToken {
                 request.setValue("token \(accessToken)", forHTTPHeaderField: "Authorization")
             }
-            // The internal Copilot API requires editor-style headers.
+            // Copilot 內部 API 需要編輯器風格的標頭
             request.setValue("vscode/1.96.2", forHTTPHeaderField: "Editor-Version")
             request.setValue("copilot-chat/0.26.7", forHTTPHeaderField: "Editor-Plugin-Version")
             request.setValue("GitHubCopilotChat/0.26.7", forHTTPHeaderField: "User-Agent")

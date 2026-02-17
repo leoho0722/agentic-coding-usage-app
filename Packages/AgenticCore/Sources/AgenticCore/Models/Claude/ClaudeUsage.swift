@@ -1,25 +1,31 @@
 import Foundation
 
-// MARK: - Claude Usage API Response
+// MARK: - Claude 用量 API 回應
 
-/// Raw response from `GET https://api.anthropic.com/api/oauth/usage`.
+/// Claude 用量 API 的原始回應結構。
+///
+/// 端點：`GET https://api.anthropic.com/api/oauth/usage`
 public struct ClaudeUsageResponse: Codable, Sendable, Equatable {
-    /// Session window (5 hours).
+    
+    /// 工作階段用量視窗（5 小時）。
     public let fiveHour: ClaudeUsagePeriod?
-    /// Weekly window (7 days).
+    
+    /// 每週用量視窗（7 天）。
     public let sevenDay: ClaudeUsagePeriod?
-    /// Weekly Opus window (7 days, plan-dependent).
+    
+    /// Opus 每週用量視窗（7 天，依方案而異）。
     public let sevenDayOpus: ClaudeUsagePeriod?
-    /// Extra usage (overages beyond included quota).
+    
+    /// 額外用量資訊（超出方案內含配額的部分）。
     public let extraUsage: ClaudeExtraUsage?
-
+    
     enum CodingKeys: String, CodingKey {
         case fiveHour = "five_hour"
         case sevenDay = "seven_day"
         case sevenDayOpus = "seven_day_opus"
         case extraUsage = "extra_usage"
     }
-
+    
     public init(
         fiveHour: ClaudeUsagePeriod? = nil,
         sevenDay: ClaudeUsagePeriod? = nil,
@@ -33,89 +39,119 @@ public struct ClaudeUsageResponse: Codable, Sendable, Equatable {
     }
 }
 
-/// A single utilization window (e.g. session 5h, weekly 7d).
+/// 單一使用率視窗（例如工作階段 5 小時、每週 7 天）。
 public struct ClaudeUsagePeriod: Codable, Sendable, Equatable {
-    /// Utilization percentage as integer 0–100.
+    
+    /// 使用率百分比，整數 0 至 100。
     public let utilization: Int
-    /// ISO 8601 timestamp when this window resets.
+    
+    /// 此視窗重置的 ISO 8601 時間戳記。
     public let resetsAt: String
-
+    
     enum CodingKeys: String, CodingKey {
         case utilization
         case resetsAt = "resets_at"
     }
-
+    
     public init(utilization: Int, resetsAt: String) {
         self.utilization = utilization
         self.resetsAt = resetsAt
     }
 }
 
-/// Extra usage information (overages billed beyond included quota).
+/// 額外用量資訊（超出方案內含配額後計費的部分）。
 public struct ClaudeExtraUsage: Codable, Sendable, Equatable {
-    /// Whether extra usage is enabled for this account.
+    
+    /// 此帳號是否啟用額外用量。
     public let isEnabled: Bool
-    /// Credits used in cents (divide by 100 for dollars).
+    
+    /// 已使用的額度（單位：美分，除以 100 為美元）。
     public let usedCredits: Int?
-    /// Monthly credit limit in cents.
+    
+    /// 每月額度上限（單位：美分）。
     public let monthlyLimit: Int?
-    /// Currency code (e.g. "USD").
+    
+    /// 幣別代碼（例如 `"USD"`）。
     public let currency: String?
-
+    
     enum CodingKeys: String, CodingKey {
         case isEnabled = "is_enabled"
         case usedCredits = "used_credits"
         case monthlyLimit = "monthly_limit"
         case currency
     }
+    
+    public init(
+        isEnabled: Bool,
+        usedCredits: Int? = nil,
+        monthlyLimit: Int? = nil,
+        currency: String? = nil
+    ) {
+        self.isEnabled = isEnabled
+        self.usedCredits = usedCredits
+        self.monthlyLimit = monthlyLimit
+        self.currency = currency
+    }
 }
 
-// MARK: - Display Model
+// MARK: - 顯示模型
 
-/// Processed Claude Code usage data ready for display in UI / CLI.
+/// 經處理的 Claude Code 用量資料，可直接用於 UI 或 CLI 顯示。
 public struct ClaudeUsageSummary: Equatable, Sendable {
-    /// Subscription type string from credentials (e.g. "pro", "max").
+    
+    /// 來自憑證的訂閱類型字串（例如 `"pro"`、`"max"`）。
     public let subscriptionType: String?
-
-    /// Session (5h) utilization percentage (0–100), or `nil` if absent.
+    
+    /// 工作階段（5 小時）使用率百分比（0 至 100），無資料時為 `nil`。
     public let sessionUtilization: Int?
-    /// Session reset ISO string.
+    
+    /// 工作階段重置的 ISO 時間戳記。
     public let sessionResetsAt: String?
-
-    /// Weekly (7d) utilization percentage (0–100), or `nil` if absent.
+    
+    /// 每週（7 天）使用率百分比（0 至 100），無資料時為 `nil`。
     public let weeklyUtilization: Int?
-    /// Weekly reset ISO string.
+    
+    /// 每週重置的 ISO 時間戳記。
     public let weeklyResetsAt: String?
-
-    /// Opus (7d) utilization percentage (0–100), or `nil` if plan doesn't include it.
+    
+    /// Opus（7 天）使用率百分比（0 至 100），方案不包含時為 `nil`。
     public let opusUtilization: Int?
-    /// Opus reset ISO string.
+    
+    /// Opus 重置的 ISO 時間戳記。
     public let opusResetsAt: String?
-
-    /// Extra usage enabled flag.
+    
+    /// 是否啟用額外用量。
     public let extraUsageEnabled: Bool
-    /// Extra usage used credits in cents.
+    
+    /// 已使用的額外用量（單位：美分）。
     public let extraUsageUsedCents: Int?
-    /// Extra usage monthly limit in cents.
+    
+    /// 每月額外用量上限（單位：美分）。
     public let extraUsageLimitCents: Int?
-    /// Extra usage currency.
+    
+    /// 額外用量的幣別。
     public let extraUsageCurrency: String?
-
+    
+    /// 從 API 回應初始化用量摘要。
+    ///
+    /// - Parameters:
+    ///   - subscriptionType: 訂閱類型字串。
+    ///   - response: Claude 用量 API 的原始回應。
     public init(
         subscriptionType: String?,
         response: ClaudeUsageResponse
     ) {
         self.subscriptionType = subscriptionType
-
+        
         self.sessionUtilization = response.fiveHour?.utilization
         self.sessionResetsAt = response.fiveHour?.resetsAt
-
+        
         self.weeklyUtilization = response.sevenDay?.utilization
         self.weeklyResetsAt = response.sevenDay?.resetsAt
-
+        
         self.opusUtilization = response.sevenDayOpus?.utilization
         self.opusResetsAt = response.sevenDayOpus?.resetsAt
-
+        
         if let extra = response.extraUsage {
             self.extraUsageEnabled = extra.isEnabled
             self.extraUsageUsedCents = extra.usedCredits
@@ -128,26 +164,26 @@ public struct ClaudeUsageSummary: Equatable, Sendable {
             self.extraUsageCurrency = nil
         }
     }
-
-    /// Whether Opus data is present (plan-dependent).
+    
+    /// 是否包含 Opus 資料（依方案而異）。
     public var hasOpus: Bool { opusUtilization != nil }
-
-    /// Whether extra usage section should be shown.
+    
+    /// 是否應顯示額外用量區塊。
     public var hasExtraUsage: Bool { extraUsageEnabled }
-
-    /// Extra usage used in dollars (e.g. 5.00).
+    
+    /// 已使用的額外用量金額（單位：美元，例如 5.00）。
     public var extraUsageUsedDollars: Double? {
         guard let cents = extraUsageUsedCents else { return nil }
         return Double(cents) / 100.0
     }
-
-    /// Extra usage limit in dollars.
+    
+    /// 每月額外用量上限（單位：美元）。
     public var extraUsageLimitDollars: Double? {
         guard let cents = extraUsageLimitCents else { return nil }
         return Double(cents) / 100.0
     }
-
-    /// Formatted subscription type for display (e.g. "Pro", "Max", "Free").
+    
+    /// 格式化的訂閱類型名稱，用於 UI 顯示（例如 `"Pro"`、`"Max"`、`"Free"`）。
     public var planDisplayName: String {
         guard let sub = subscriptionType?.lowercased() else { return "Unknown" }
         switch sub {
@@ -159,27 +195,32 @@ public struct ClaudeUsageSummary: Equatable, Sendable {
     }
 }
 
-// MARK: - Reset Time Utilities
+// MARK: - 重置時間工具
 
 extension ClaudeUsagePeriod {
-    /// Parse `resetsAt` into a `Date`.
+    
+    /// 將 `resetsAt` 解析為 `Date`。
     public var resetsAtDate: Date? {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: resetsAt)
     }
-
-    /// Human-readable countdown string until reset (e.g. "2h 30m", "3d 5h").
+    
+    /// 距離重置時間的倒數計時字串（例如 `"2h 30m"`、`"3d 5h"`）。
     public var resetCountdown: String? {
-        guard let resetDate = resetsAtDate else { return nil }
+        guard let resetDate = resetsAtDate else {
+            return nil
+        }
         let now = Date()
-        guard resetDate > now else { return "now" }
-
+        guard resetDate > now else {
+            return "now"
+        }
+        
         let interval = resetDate.timeIntervalSince(now)
         let totalMinutes = Int(interval) / 60
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
-
+        
         if hours >= 24 {
             let days = hours / 24
             let remainingHours = hours % 24

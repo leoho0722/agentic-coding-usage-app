@@ -1,129 +1,251 @@
-import AgenticCore
 import AppKit
+
+import AgenticCore
 import ComposableArchitecture
 
+// MARK: - MenuBarFeature
+
+/// MenuBar 功能的 TCA Reducer，管理所有工具卡片的認證、用量查詢與通知邏輯。
 @Reducer
 struct MenuBarFeature {
     
     // MARK: - State
     
+    /// MenuBar 功能的可觀察狀態，包含 Copilot、Claude Code、Codex 三個工具的完整狀態。
     @ObservableState
     struct State: Equatable {
-        // Copilot
+        
+        // MARK: Copilot
+        
+        /// Copilot 的 GitHub OAuth 認證狀態
         var authState: AuthState = .loggedOut
+        
+        /// Copilot 用量摘要
         var usageSummary: CopilotUsageSummary?
+        
+        /// 偵測到的 Copilot 方案類型
         var detectedPlan: CopilotPlan?
+        
+        /// Copilot 用量是否正在載入
         var isLoading: Bool = false
+        
+        /// Copilot 相關的錯誤訊息
         var errorMessage: String?
+        
+        /// GitHub Device Flow 認證的中繼狀態
         var deviceFlowState: DeviceFlowState?
-
-        // Claude Code
+        
+        // MARK: Claude Code
+        
+        /// Claude Code 的連線狀態
         var claudeConnectionState: ClaudeConnectionState = .notDetected
+        
+        /// Claude Code 用量摘要
         var claudeUsageSummary: ClaudeUsageSummary?
+        
+        /// Claude Code 用量是否正在載入
         var isClaudeLoading: Bool = false
+        
+        /// Claude Code 相關的錯誤訊息
         var claudeErrorMessage: String?
-
-        // Codex
+        
+        // MARK: Codex
+        
+        /// Codex 的連線狀態
         var codexConnectionState: CodexConnectionState = .notDetected
+        
+        /// Codex 用量摘要
         var codexUsageSummary: CodexUsageSummary?
+        
+        /// Codex 用量是否正在載入
         var isCodexLoading: Bool = false
+        
+        /// Codex 相關的錯誤訊息
         var codexErrorMessage: String?
-
-        /// Which tool card is currently expanded (accordion). Defaults to Copilot on launch.
+        
+        /// 目前展開的工具卡片（手風琴），預設為 Copilot
         var expandedTool: ToolKind? = .copilot
     }
     
+    /// Copilot 的 GitHub OAuth 認證狀態列舉。
     enum AuthState: Equatable, Sendable {
+        
+        /// 尚未登入
         case loggedOut
+        
+        /// 正在進行 Device Flow 認證
         case authenticating
+        
+        /// 已登入，附帶使用者資訊與存取權杖
         case loggedIn(user: GitHubUser, accessToken: String)
         
+        /// 取得目前的存取權杖，僅在已登入狀態下回傳。
         var accessToken: String? {
             if case let .loggedIn(_, token) = self { return token }
             return nil
         }
     }
     
+    /// GitHub Device Flow 認證過程中的中繼狀態，包含使用者驗證碼與驗證 URL。
     struct DeviceFlowState: Equatable, Sendable {
+        
+        /// 使用者需輸入的驗證碼
         let userCode: String
+        
+        /// GitHub 驗證頁面的 URL
         let verificationUri: String
     }
-
+    
+    /// Claude Code 的連線狀態列舉。
     enum ClaudeConnectionState: Equatable, Sendable {
-        /// No credentials found on disk / Keychain.
+        
+        /// 未偵測到本地憑證
         case notDetected
-        /// Credentials found and usage loaded.
+        
+        /// 已連線，附帶訂閱類型資訊
         case connected(subscriptionType: String?)
     }
-
+    
+    /// Codex 的連線狀態列舉。
     enum CodexConnectionState: Equatable, Sendable {
-        /// No credentials found on disk / Keychain.
+        
+        /// 未偵測到本地憑證
         case notDetected
-        /// Credentials found and usage loaded.
+        
+        /// 已連線，附帶方案類型資訊
         case connected(planType: String?)
     }
     
     // MARK: - Action
     
+    /// MenuBar 功能的所有可觸發動作。
     enum Action: Equatable, Sendable {
+        
+        /// 畫面出現時觸發，負責初始化所有工具的狀態
         case onAppear
+        
+        /// 檢查鑰匙圈中是否已有 Copilot 的存取權杖
         case checkExistingAuth
+        
+        /// 向使用者請求本地通知授權
         case requestNotificationAuthorization
         
-        // Copilot
+        // MARK: Copilot
+        
+        
+        /// 使用者點擊登入按鈕
         case loginButtonTapped
+        
+        /// 收到 GitHub Device Flow 的驗證碼
         case deviceCodeReceived(DeviceFlowState)
+        
+        /// 登入成功，附帶使用者資訊與存取權杖
         case loginCompleted(GitHubUser, String)
+        
+        /// 登入失敗，附帶錯誤訊息
         case loginFailed(String)
+        
+        /// 使用者點擊登出按鈕
         case logoutButtonTapped
+        
+        /// 登出流程完成
         case logoutCompleted
         
+        /// 開始擷取 Copilot 用量資料
         case fetchUsage
+        
+        
+        /// Copilot 用量回應成功
         case usageResponse(CopilotUsageSummary)
+        
+        
+        /// Copilot 用量擷取失敗
         case usageFailed(String)
+        
+        
+        /// 檢查 Copilot 用量是否達到通知門檻
         case checkUsageThresholds
-
-        // Claude Code
+        
+        // MARK: Claude Code
+        
+        /// 偵測本機是否存在 Claude Code 憑證
         case detectClaudeCredentials
+        
+        /// 手動重新擷取 Claude Code 用量
         case fetchClaudeUsage
+        
+        /// Claude Code 用量回應成功
         case claudeUsageResponse(ClaudeUsageSummary)
+        
+        /// Claude Code 用量擷取失敗
         case claudeUsageFailed(String)
+        
+        /// 檢查 Claude Code 用量是否達到通知門檻
         case checkClaudeUsageThresholds
-
-        // Codex
+        
+        // MARK: Codex
+        
+        /// 偵測本機是否存在 Codex 憑證
         case detectCodexCredentials
+        
+        /// 手動重新擷取 Codex 用量
         case fetchCodexUsage
+        
+        /// Codex 用量回應成功
         case codexUsageResponse(CodexUsageSummary)
+        
+        /// Codex 用量擷取失敗
         case codexUsageFailed(String)
+        
+        /// 檢查 Codex 用量是否達到通知門檻
         case checkCodexUsageThresholds
-
-        // UI
+        
+        // MARK: UI
+        
+        /// 切換指定工具卡片的展開/收合狀態
         case toggleToolExpansion(ToolKind)
-
+        
+        /// 在瀏覽器中開啟 GitHub 驗證頁面
         case openVerificationURL
+        
+        /// 將 Device Flow 驗證碼複製到剪貼簿
         case copyUserCode
+        
+        /// 關閉 Copilot 錯誤訊息
         case dismissError
+        
+        /// 關閉 Claude Code 錯誤訊息
         case dismissClaudeError
+        
+        /// 關閉 Codex 錯誤訊息
         case dismissCodexError
+        
+        /// 結束應用程式
         case quitApp
     }
     
-    // MARK: - Client ID
+    // MARK: - 常數
     
+    /// GitHub OAuth App 的 Client ID，從 Info.plist 讀取。
     static let gitHubClientID: String = {
         guard let clientID = Bundle.main.infoDictionary?["GitHubClientID"] as? String,
               !clientID.isEmpty,
               clientID != "YOUR_GITHUB_CLIENT_ID_HERE" else {
             fatalError(
-                "GitHubClientID not configured. Copy Secrets.xcconfig.template to Secrets.xcconfig and set your GitHub OAuth App client ID."
+                """
+                GitHubClientID not configured. \
+                Copy Secrets.xcconfig.template to Secrets.xcconfig \
+                and set your GitHub OAuth App client ID.
+                """
             )
         }
         return clientID
     }()
-
-    // MARK: - Reset Cycle Helpers
-
-    /// Returns "YYYY-MM" UTC string for Copilot monthly reset cycle.
+    
+    // MARK: - 重設週期輔助工具
+    
+    /// 取得 Copilot 每月重設週期的字串標識（UTC 時區的 "YYYY-MM" 格式）。
+    /// - Returns: 當前月份的字串，例如 "2026-02"
     private static func copilotResetCycle() -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM"
@@ -131,13 +253,13 @@ struct MenuBarFeature {
         return formatter.string(from: Date())
     }
     
-    // MARK: - Body
+    // MARK: - Reducer 主體
     
     var body: some ReducerOf<Self> {
         Reduce<State, Action> { state, action in
             switch action {
-                
             case .onAppear:
+                // 同時啟動所有工具的初始化流程與通知授權
                 return .merge(
                     .send(.checkExistingAuth),
                     .send(.detectClaudeCredentials),
@@ -152,6 +274,7 @@ struct MenuBarFeature {
                 } catch: { _, _ in }
                 
             case .checkExistingAuth:
+                // 嘗試從鑰匙圈還原已儲存的存取權杖
                 return .run { send in
                     @Dependency(\.keychainService) var keychainService
                     @Dependency(\.gitHubAPIClient) var apiClient
@@ -164,6 +287,10 @@ struct MenuBarFeature {
             case .loginButtonTapped:
                 state.authState = .authenticating
                 state.errorMessage = nil
+                
+                // 1. 向 GitHub 請求 Device Code
+                // 2. 輪詢等待使用者授權
+                // 3. 取得存取權杖後驗證使用者身份並儲存至鑰匙圈
                 return .run { send in
                     @Dependency(\.oAuthService) var oAuthService
                     @Dependency(\.gitHubAPIClient) var apiClient
@@ -206,6 +333,7 @@ struct MenuBarFeature {
                 return .none
                 
             case .logoutButtonTapped:
+                // 從鑰匙圈刪除存取權杖，無論成功與否都完成登出
                 return .run { send in
                     @Dependency(\.keychainService) var keychainService
                     try keychainService.deleteAccessToken()
@@ -232,6 +360,7 @@ struct MenuBarFeature {
                     let plan = CopilotPlan.fromAPIString(status.copilotPlan)
                     let daysUntilReset = DateUtils.daysUntilReset()
                     
+                    // 根據方案類型組裝不同結構的用量摘要
                     let summary: CopilotUsageSummary
                     if plan == .free {
                         summary = CopilotUsageSummary(
@@ -244,11 +373,12 @@ struct MenuBarFeature {
                             freeCompletionsTotal: status.monthlyQuotas?.completions
                         )
                     } else {
+                        let premiumPercentRemaining = status.quotaSnapshots?.premiumInteractions?.percentRemaining
                         summary = CopilotUsageSummary(
                             plan: plan,
                             planLimit: plan.limit,
                             daysUntilReset: daysUntilReset,
-                            premiumPercentRemaining: status.quotaSnapshots?.premiumInteractions?.percentRemaining
+                            premiumPercentRemaining: premiumPercentRemaining
                         )
                     }
                     await send(.usageResponse(summary))
@@ -270,7 +400,7 @@ struct MenuBarFeature {
                     @Dependency(\.notificationClient) var notificationClient
                     
                     if summary.isFreeTier {
-                        // Free tier: check Chat and Completions separately
+                        // 免費方案：分別檢查 Chat 和 Completions 的門檻
                         if let chatRemaining = summary.freeChatRemaining,
                            let chatTotal = summary.freeChatTotal, chatTotal > 0 {
                             let chatUsedPct = Int(round(Double(chatTotal - chatRemaining) / Double(chatTotal) * 100))
@@ -287,6 +417,7 @@ struct MenuBarFeature {
                                 }
                             }
                         }
+                        
                         if let compRemaining = summary.freeCompletionsRemaining,
                            let compTotal = summary.freeCompletionsTotal, compTotal > 0 {
                             let compUsedPct = Int(round(Double(compTotal - compRemaining) / Double(compTotal) * 100))
@@ -304,7 +435,7 @@ struct MenuBarFeature {
                             }
                         }
                     } else {
-                        // Paid tier: single usage percentage
+                        // 付費方案：使用單一百分比計算門檻
                         let usedPct = Int(round(summary.usagePercentage * 100))
                         let thresholds = UsageThreshold.reached(by: usedPct)
                         for threshold in thresholds {
@@ -319,21 +450,23 @@ struct MenuBarFeature {
                         }
                     }
                 } catch: { _, _ in }
-
-            // MARK: - Claude Code
-
+                
+                // MARK: - Claude Code
+                
             case .detectClaudeCredentials:
                 state.isClaudeLoading = true
                 state.claudeErrorMessage = nil
+                
+                // 1. 從本機載入憑證
+                // 2. 必要時重新整理存取權杖
+                // 3. 擷取用量資料
                 return .run { send in
                     @Dependency(\.claudeAPIClient) var claudeClient
                     guard let credentials = try claudeClient.loadCredentials() else {
                         await send(.claudeUsageFailed("notDetected"))
                         return
                     }
-                    // Refresh token if needed
                     let refreshed = try await claudeClient.refreshTokenIfNeeded(credentials)
-                    // Fetch usage
                     let response = try await claudeClient.fetchUsage(refreshed.accessToken)
                     let summary = ClaudeUsageSummary(
                         subscriptionType: refreshed.subscriptionType,
@@ -343,7 +476,7 @@ struct MenuBarFeature {
                 } catch: { error, send in
                     await send(.claudeUsageFailed(error.localizedDescription))
                 }
-
+                
             case .fetchClaudeUsage:
                 state.isClaudeLoading = true
                 state.claudeErrorMessage = nil
@@ -363,15 +496,17 @@ struct MenuBarFeature {
                 } catch: { error, send in
                     await send(.claudeUsageFailed(error.localizedDescription))
                 }
-
+                
             case let .claudeUsageResponse(summary):
                 state.isClaudeLoading = false
                 state.claudeConnectionState = .connected(subscriptionType: summary.subscriptionType)
                 state.claudeUsageSummary = summary
                 return .send(.checkClaudeUsageThresholds)
-
+                
             case let .claudeUsageFailed(message):
                 state.isClaudeLoading = false
+                
+                // "notDetected" 為特殊標記，表示無本地憑證而非真正的錯誤
                 if message == "notDetected" {
                     state.claudeConnectionState = .notDetected
                     state.claudeErrorMessage = nil
@@ -379,13 +514,13 @@ struct MenuBarFeature {
                     state.claudeErrorMessage = message
                 }
                 return .none
-
+                
             case .checkClaudeUsageThresholds:
                 guard let summary = state.claudeUsageSummary else { return .none }
                 return .run { _ in
                     @Dependency(\.notificationClient) var notificationClient
-
-                    // Session (5h)
+                    
+                    // 工作階段用量（5 小時窗口）
                     if let pct = summary.sessionUtilization,
                        let resetCycle = summary.sessionResetsAt {
                         let thresholds = UsageThreshold.reached(by: pct)
@@ -401,8 +536,8 @@ struct MenuBarFeature {
                             }
                         }
                     }
-
-                    // Weekly (7d)
+                    
+                    // 每週用量（7 天窗口）
                     if let pct = summary.weeklyUtilization,
                        let resetCycle = summary.weeklyResetsAt {
                         let thresholds = UsageThreshold.reached(by: pct)
@@ -418,8 +553,8 @@ struct MenuBarFeature {
                             }
                         }
                     }
-
-                    // Opus (7d)
+                    
+                    // Opus 模型用量（7 天窗口）
                     if let pct = summary.opusUtilization,
                        let resetCycle = summary.opusResetsAt {
                         let thresholds = UsageThreshold.reached(by: pct)
@@ -436,9 +571,9 @@ struct MenuBarFeature {
                         }
                     }
                 } catch: { _, _ in }
-
-            // MARK: - Codex
-
+                
+                // MARK: - Codex
+                
             case .detectCodexCredentials:
                 state.isCodexLoading = true
                 state.codexErrorMessage = nil
@@ -455,17 +590,16 @@ struct MenuBarFeature {
                     let summary = CodexUsageSummary(headers: headers, response: response)
                     await send(.codexUsageResponse(summary))
                 } catch: { error, send in
-                    // Retry on 401: force refresh and try again
+                    // 收到 401 時，嘗試強制重新整理權杖後重試
                     if let apiError = error as? CodexAPIError,
                        case let .httpError(statusCode, _) = apiError,
-                       statusCode == 401
-                    {
+                       statusCode == 401 {
                         await send(.fetchCodexUsage)
                     } else {
                         await send(.codexUsageFailed(error.localizedDescription))
                     }
                 }
-
+                
             case .fetchCodexUsage:
                 state.isCodexLoading = true
                 state.codexErrorMessage = nil
@@ -484,15 +618,16 @@ struct MenuBarFeature {
                 } catch: { error, send in
                     await send(.codexUsageFailed(error.localizedDescription))
                 }
-
+                
             case let .codexUsageResponse(summary):
                 state.isCodexLoading = false
                 state.codexConnectionState = .connected(planType: summary.planType)
                 state.codexUsageSummary = summary
                 return .send(.checkCodexUsageThresholds)
-
+                
             case let .codexUsageFailed(message):
                 state.isCodexLoading = false
+                
                 if message == "notDetected" {
                     state.codexConnectionState = .notDetected
                     state.codexErrorMessage = nil
@@ -500,16 +635,15 @@ struct MenuBarFeature {
                     state.codexErrorMessage = message
                 }
                 return .none
-
+                
             case .checkCodexUsageThresholds:
                 guard let summary = state.codexUsageSummary else { return .none }
                 return .run { _ in
                     @Dependency(\.notificationClient) var notificationClient
-
-                    // Session (5h)
+                    
+                    // 工作階段用量（5 小時窗口）
                     if let pct = summary.sessionUsedPercent,
-                       let resetAt = summary.sessionResetAt
-                    {
+                       let resetAt = summary.sessionResetAt {
                         let resetCycle = String(Int(resetAt.timeIntervalSince1970))
                         let thresholds = UsageThreshold.reached(by: pct)
                         for threshold in thresholds {
@@ -524,11 +658,10 @@ struct MenuBarFeature {
                             }
                         }
                     }
-
-                    // Weekly (7d)
+                    
+                    // 每週用量（7 天窗口）
                     if let pct = summary.weeklyUsedPercent,
-                       let resetAt = summary.weeklyResetAt
-                    {
+                       let resetAt = summary.weeklyResetAt {
                         let resetCycle = String(Int(resetAt.timeIntervalSince1970))
                         let thresholds = UsageThreshold.reached(by: pct)
                         for threshold in thresholds {
@@ -544,19 +677,24 @@ struct MenuBarFeature {
                         }
                     }
                 } catch: { _, _ in }
-
+                
             case let .usageFailed(message):
                 state.isLoading = false
                 state.errorMessage = message
                 return .none
                 
             case let .toggleToolExpansion(tool):
-                guard tool.isAvailable else { return .none }
+                // 僅已啟用的工具才可展開
+                guard tool.isAvailable else {
+                    return .none
+                }
+                
                 if state.expandedTool == tool {
                     state.expandedTool = nil
                 } else {
                     state.expandedTool = tool
                 }
+                
                 return .none
                 
             case .openVerificationURL:
@@ -582,11 +720,11 @@ struct MenuBarFeature {
             case .dismissError:
                 state.errorMessage = nil
                 return .none
-
+                
             case .dismissClaudeError:
                 state.claudeErrorMessage = nil
                 return .none
-
+                
             case .dismissCodexError:
                 state.codexErrorMessage = nil
                 return .none

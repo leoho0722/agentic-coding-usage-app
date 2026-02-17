@@ -1,31 +1,38 @@
 import Foundation
 
-// MARK: - Computed Usage Model
+// MARK: - Copilot 用量摘要
 
-/// Aggregated Copilot usage summary for display.
-/// Supports both the internal API percentage-based (paid tier) and count-based (free tier) data.
+/// Copilot 彙總用量摘要，用於 UI 顯示。
+///
+/// 同時支援內部 API 的百分比格式（付費方案）與次數格式（免費方案）資料。
 public struct CopilotUsageSummary: Equatable, Sendable {
-    /// The auto-detected plan from the internal API.
+    
+    /// 從內部 API 自動偵測的訂閱方案。
     public let plan: CopilotPlan
-    /// The plan's monthly premium request limit.
+    
+    /// 此方案每月的進階請求配額上限。
     public let planLimit: Int
-    /// Days remaining until the usage counter resets.
+    
+    /// 距離用量計數器重置的天數。
     public let daysUntilReset: Int
 
-    // MARK: - Paid tier fields (from quota_snapshots)
+    // MARK: - 付費方案欄位（來自 quota_snapshots）
 
-    /// Percentage of premium requests remaining (0.0–1.0). Nil for free tier.
+    /// 進階請求的剩餘百分比（0.0 至 1.0）。免費方案為 `nil`。
     public let premiumPercentRemaining: Double?
 
-    // MARK: - Free tier fields (from limited_user_quotas)
+    // MARK: - 免費方案欄位（來自 limited_user_quotas）
 
-    /// Chat requests remaining (free tier). Nil for paid tier.
+    /// 聊天功能的剩餘次數（免費方案）。付費方案為 `nil`。
     public let freeChatRemaining: Int?
-    /// Chat requests total (free tier). Nil for paid tier.
+   
+    /// 聊天功能的每月總配額（免費方案）。付費方案為 `nil`。
     public let freeChatTotal: Int?
-    /// Completions remaining (free tier). Nil for paid tier.
+  
+    /// 程式碼補全的剩餘次數（免費方案）。付費方案為 `nil`。
     public let freeCompletionsRemaining: Int?
-    /// Completions total (free tier). Nil for paid tier.
+   
+    /// 程式碼補全的每月總配額（免費方案）。付費方案為 `nil`。
     public let freeCompletionsTotal: Int?
 
     public init(
@@ -48,14 +55,15 @@ public struct CopilotUsageSummary: Equatable, Sendable {
         self.freeCompletionsTotal = freeCompletionsTotal
     }
 
-    /// Whether this is a free tier user.
+    /// 是否為免費方案使用者。
     public var isFreeTier: Bool {
         plan == .free
     }
 
-    /// Usage percentage for display (0.0–1.0). Used portion, not remaining.
-    /// For paid tier: derived from `premiumPercentRemaining`.
-    /// For free tier: derived from chat remaining/total.
+    /// 用於 UI 顯示的使用百分比（0.0 至 1.0），表示已使用的比例而非剩餘比例。
+    ///
+    /// - 付費方案：由 `premiumPercentRemaining` 推算。
+    /// - 免費方案：由聊天功能的剩餘/總量推算。
     public var usagePercentage: Double {
         if let premiumPercentRemaining {
             return max(0, min(1.0, (100.0 - premiumPercentRemaining) / 100.0))
@@ -66,7 +74,7 @@ public struct CopilotUsageSummary: Equatable, Sendable {
         return 0
     }
 
-    /// Estimated premium requests used (for paid tiers).
+    /// 預估已使用的進階請求次數（僅限付費方案）。
     public var premiumRequestsUsed: Int {
         if let premiumPercentRemaining {
             let usedPercent = max(0, min(100, 100.0 - premiumPercentRemaining))
@@ -75,7 +83,7 @@ public struct CopilotUsageSummary: Equatable, Sendable {
         return 0
     }
 
-    /// Estimated remaining premium requests (for paid tiers).
+    /// 預估剩餘的進階請求次數（僅限付費方案）。
     public var remaining: Int {
         if let premiumPercentRemaining {
             return Int(round(Double(planLimit) * max(0, min(100, premiumPercentRemaining)) / 100.0))

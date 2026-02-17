@@ -1,51 +1,67 @@
-import Dependencies
 import Foundation
 import UserNotifications
 
-/// TCA dependency for local notification operations.
+import Dependencies
+
+// MARK: - NotificationClient
+
+/// 本地通知操作的 TCA 相依性，負責授權請求、通知發送與門檻追蹤。
 struct NotificationClient: Sendable {
-    /// Request notification authorization from the user.
+    
+    /// 向使用者請求通知授權，回傳是否獲得授權。
     var requestAuthorization: @Sendable () async throws -> Bool
-    /// Send a local notification with the given title and body.
+    
+    /// 發送一則本地通知。
     var send: @Sendable (_ id: String, _ title: String, _ body: String) async throws -> Void
-    /// Check whether a threshold has already been notified for a given tool-window in the current reset cycle.
+    
+    /// 檢查指定工具窗口在目前重設週期內是否已發送過該門檻通知。
     var hasNotified: @Sendable (_ toolWindow: String, _ threshold: Int, _ resetCycle: String) -> Bool
-    /// Mark a threshold as notified for a given tool-window in the current reset cycle.
+    
+    /// 標記指定工具窗口在目前重設週期內已發送過該門檻通知。
     var markNotified: @Sendable (_ toolWindow: String, _ threshold: Int, _ resetCycle: String) -> Void
-    /// Clear all notified thresholds (e.g. for testing or manual reset).
+    
+    /// 清除所有已通知的門檻紀錄（用於測試或手動重設）。
     var clearNotified: @Sendable () -> Void
 }
 
-// MARK: - Live Implementation
+// MARK: - 正式版實作
 
 extension NotificationClient {
-    /// UserDefaults key storing `[String: NotifiedRecord]` encoded as JSON.
-    /// Each tool-window has its own reset cycle identifier and list of notified thresholds.
+    
+    /// UserDefaults 中儲存 `[String: NotifiedRecord]` JSON 資料的鍵名。
+    ///
+    /// 每個工具窗口各自擁有獨立的重設週期識別碼與已通知門檻清單。
     private static let notifiedKey = "notifiedUsageThresholds_v2"
 
-    /// Per-tool-window record of which thresholds have been notified and for which cycle.
+    /// 單一工具窗口的門檻通知紀錄，記錄目前的重設週期與已通知的門檻列表。
     private struct NotifiedRecord: Codable {
+        
+        /// 重設週期識別碼
         var resetCycle: String
+        
+        /// 已通知的門檻數值列表
         var thresholds: [Int]
     }
 
-    /// Load the notified records dictionary from UserDefaults.
+    /// 從 UserDefaults 載入所有工具窗口的通知紀錄。
+    /// - Returns: 工具窗口 ID 對應通知紀錄的字典
     private static func loadRecords() -> [String: NotifiedRecord] {
         guard let data = UserDefaults.standard.data(forKey: notifiedKey),
-              let dict = try? JSONDecoder().decode([String: NotifiedRecord].self, from: data)
-        else {
+              let dict = try? JSONDecoder().decode([String: NotifiedRecord].self, from: data) else {
             return [:]
         }
         return dict
     }
 
-    /// Save the notified records dictionary to UserDefaults.
+    /// 將通知紀錄字典儲存至 UserDefaults。
+    /// - Parameter records: 工具窗口 ID 對應通知紀錄的字典
     private static func saveRecords(_ records: [String: NotifiedRecord]) {
         if let data = try? JSONEncoder().encode(records) {
             UserDefaults.standard.set(data, forKey: notifiedKey)
         }
     }
 
+    /// 正式版實作，使用 `UNUserNotificationCenter` 與 `UserDefaults`。
     static let live = NotificationClient(
         requestAuthorization: {
             let center = UNUserNotificationCenter.current()
@@ -60,13 +76,14 @@ extension NotificationClient {
             let request = UNNotificationRequest(
                 identifier: id,
                 content: content,
-                trigger: nil // deliver immediately
+                trigger: nil // 立即送達
             )
             try await UNUserNotificationCenter.current().add(request)
         },
         hasNotified: { toolWindow, threshold, resetCycle in
             var records = loadRecords()
-            // If cycle changed for this tool-window, clear its thresholds
+            
+            // 若該工具窗口的重設週期已改變，清除其門檻紀錄
             if let record = records[toolWindow], record.resetCycle != resetCycle {
                 records[toolWindow] = NotifiedRecord(resetCycle: resetCycle, thresholds: [])
                 saveRecords(records)
@@ -77,7 +94,8 @@ extension NotificationClient {
         markNotified: { toolWindow, threshold, resetCycle in
             var records = loadRecords()
             var record = records[toolWindow] ?? NotifiedRecord(resetCycle: resetCycle, thresholds: [])
-            // If cycle changed, reset thresholds
+            
+            // 若重設週期已改變，重新初始化門檻紀錄
             if record.resetCycle != resetCycle {
                 record = NotifiedRecord(resetCycle: resetCycle, thresholds: [])
             }
@@ -93,9 +111,11 @@ extension NotificationClient {
     )
 }
 
-// MARK: - Test Implementation
+// MARK: - 測試實作
 
+/// 測試用的模擬實作，不發送實際通知。
 extension NotificationClient: TestDependencyKey {
+    /// 測試用的模擬實作
     static let testValue = NotificationClient(
         requestAuthorization: { true },
         send: { _, _, _ in },
@@ -105,9 +125,10 @@ extension NotificationClient: TestDependencyKey {
     )
 }
 
-// MARK: - DependencyValues
+// MARK: - 相依性註冊
 
 extension DependencyValues {
+    /// 通知客戶端相依性
     var notificationClient: NotificationClient {
         get { self[NotificationClient.self] }
         set { self[NotificationClient.self] = newValue }

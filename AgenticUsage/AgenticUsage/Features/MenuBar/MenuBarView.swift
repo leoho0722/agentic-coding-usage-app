@@ -1,19 +1,26 @@
+import SwiftUI
 import AgenticCore
 import ComposableArchitecture
-import SwiftUI
 
+// MARK: - MenuBarView
+
+/// MenuBar 視窗的主要視圖，以手風琴式卡片佈局呈現各工具的用量資訊。
 struct MenuBarView: View {
+    
+    /// TCA Store 的綁定參考
     @Bindable var store: StoreOf<MenuBarFeature>
+    
+    /// 系統目前的外觀模式（Light/Dark），用於工具圖示切換
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // MARK: - Header
+            // 頂部標題列：App 名稱 + 版本號
             headerView
 
             Divider()
 
-            // MARK: - Tool Cards
+            // 工具卡片區域：各工具以手風琴式展開/收合
             ScrollView {
                 VStack(spacing: 0) {
                     copilotToolCard
@@ -24,6 +31,7 @@ struct MenuBarView: View {
                     Divider()
                     codexToolCard
 
+                    // 尚未上線的工具顯示「Coming Soon」卡片
                     ForEach(ToolKind.allCases.filter(\.isComingSoon)) { tool in
                         Divider()
                         comingSoonCard(tool: tool)
@@ -33,7 +41,7 @@ struct MenuBarView: View {
 
             Divider()
 
-            // MARK: - Footer
+            // 底部動作列：結束應用程式
             footerView
         }
         .frame(width: 320)
@@ -42,8 +50,9 @@ struct MenuBarView: View {
         }
     }
 
-    // MARK: - Header
+    // MARK: - 標題列
 
+    /// 頂部標題列，顯示 App 名稱與版本號。
     @ViewBuilder
     private var headerView: some View {
         HStack {
@@ -58,15 +67,16 @@ struct MenuBarView: View {
         .padding(.vertical, 10)
     }
 
-    // MARK: - Copilot Tool Card
+    // MARK: - Copilot 工具卡片
 
+    /// Copilot 工具卡片，包含可點擊的標題列與可展開的內容區域。
     @ViewBuilder
     private var copilotToolCard: some View {
         let tool = ToolKind.copilot
         let isExpanded = store.expandedTool == tool
 
         VStack(alignment: .leading, spacing: 0) {
-            // Collapsed header — always visible
+            // 收合的標題列，始終可見
             Button {
                 store.send(.toggleToolExpansion(tool))
             } label: {
@@ -74,7 +84,7 @@ struct MenuBarView: View {
             }
             .buttonStyle(.plain)
 
-            // Expanded content
+            // 展開的內容區域
             if isExpanded {
                 Divider()
                     .padding(.horizontal, 12)
@@ -84,6 +94,10 @@ struct MenuBarView: View {
         }
     }
 
+    /// Copilot 卡片的標題列佈局，包含圖示、名稱、狀態標籤與展開箭頭。
+    /// - Parameters:
+    ///   - tool: 工具類型
+    ///   - isExpanded: 是否處於展開狀態
     @ViewBuilder
     private func copilotCardHeader(tool: ToolKind, isExpanded: Bool) -> some View {
         HStack(spacing: 8) {
@@ -93,7 +107,7 @@ struct MenuBarView: View {
                 .font(.subheadline)
                 .fontWeight(.medium)
 
-            // Separator + status
+            // 分隔線與狀態標籤
             copilotStatusLabel
 
             Spacer()
@@ -109,7 +123,7 @@ struct MenuBarView: View {
         .contentShape(Rectangle())
     }
 
-    /// Status portion of the collapsed Copilot card: username + plan badge, or connection status.
+    /// Copilot 卡片收合時的狀態標籤，顯示使用者名稱 + 方案徽章，或連線狀態。
     @ViewBuilder
     private var copilotStatusLabel: some View {
         switch store.authState {
@@ -145,8 +159,9 @@ struct MenuBarView: View {
         }
     }
 
-    // MARK: - Copilot Expanded Content
+    // MARK: - Copilot 展開內容
 
+    /// 依據認證狀態切換不同的 Copilot 展開內容。
     @ViewBuilder
     private var copilotExpandedContent: some View {
         switch store.authState {
@@ -161,6 +176,7 @@ struct MenuBarView: View {
         }
     }
 
+    /// 未登入時顯示的提示與連接 GitHub 按鈕。
     @ViewBuilder
     private var copilotLoggedOutContent: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -177,6 +193,7 @@ struct MenuBarView: View {
         .padding(12)
     }
 
+    /// Device Flow 認證進行中的畫面，顯示驗證碼與開啟 GitHub 按鈕。
     @ViewBuilder
     private var copilotAuthenticatingContent: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -216,10 +233,11 @@ struct MenuBarView: View {
         .padding(12)
     }
 
+    /// 已登入時的完整內容，包含用量摘要、錯誤提示與操作按鈕。
     @ViewBuilder
     private var copilotLoggedInContent: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Usage display
+            // 用量顯示區域
             if store.isLoading {
                 HStack {
                     Spacer()
@@ -232,7 +250,7 @@ struct MenuBarView: View {
                 usageSummaryView(summary: summary)
             }
 
-            // Error
+            // 錯誤訊息提示
             if let error = store.errorMessage {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -255,7 +273,7 @@ struct MenuBarView: View {
             Divider()
                 .padding(.horizontal, 12)
 
-            // Card-level actions: Refresh + Sign Out
+            // 卡片底部操作列：重新整理 + 登出
             HStack {
                 Button {
                     store.send(.fetchUsage)
@@ -280,8 +298,9 @@ struct MenuBarView: View {
         }
     }
 
-    // MARK: - Claude Code Tool Card
+    // MARK: - Claude Code 工具卡片
 
+    /// Claude Code 工具卡片，包含可點擊的標題列與可展開的內容區域。
     @ViewBuilder
     private var claudeToolCard: some View {
         let tool = ToolKind.claudeCode
@@ -304,6 +323,10 @@ struct MenuBarView: View {
         }
     }
 
+    /// Claude Code 卡片的標題列佈局。
+    /// - Parameters:
+    ///   - tool: 工具類型
+    ///   - isExpanded: 是否處於展開狀態
     @ViewBuilder
     private func claudeCardHeader(tool: ToolKind, isExpanded: Bool) -> some View {
         HStack(spacing: 8) {
@@ -328,6 +351,7 @@ struct MenuBarView: View {
         .contentShape(Rectangle())
     }
 
+    /// Claude Code 卡片收合時的狀態標籤，顯示偵測狀態與訂閱方案徽章。
     @ViewBuilder
     private var claudeStatusLabel: some View {
         switch store.claudeConnectionState {
@@ -354,6 +378,7 @@ struct MenuBarView: View {
         }
     }
 
+    /// 依據連線狀態切換不同的 Claude Code 展開內容。
     @ViewBuilder
     private var claudeExpandedContent: some View {
         switch store.claudeConnectionState {
@@ -365,6 +390,7 @@ struct MenuBarView: View {
         }
     }
 
+    /// Claude Code 未偵測到憑證時的提示與重新偵測按鈕。
     @ViewBuilder
     private var claudeNotDetectedContent: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -382,6 +408,7 @@ struct MenuBarView: View {
         .padding(12)
     }
 
+    /// Claude Code 已連線時的完整內容，包含用量摘要、錯誤提示與重新整理按鈕。
     @ViewBuilder
     private var claudeConnectedContent: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -397,7 +424,7 @@ struct MenuBarView: View {
                 claudeUsageSummaryView(summary: summary)
             }
 
-            // Error
+            // 錯誤訊息提示
             if let error = store.claudeErrorMessage {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -420,7 +447,7 @@ struct MenuBarView: View {
             Divider()
                 .padding(.horizontal, 12)
 
-            // Refresh button
+            // 重新整理按鈕
             HStack {
                 Button {
                     store.send(.fetchClaudeUsage)
@@ -438,12 +465,14 @@ struct MenuBarView: View {
         }
     }
 
-    // MARK: - Claude Usage Summary
+    // MARK: - Claude Code 用量摘要
 
+    /// Claude Code 用量摘要視圖，顯示各時間窗口的使用百分比與額外用量。
+    /// - Parameter summary: Claude Code 用量摘要資料
     @ViewBuilder
     private func claudeUsageSummaryView(summary: ClaudeUsageSummary) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Session (5h)
+            // 工作階段用量（5 小時窗口）
             if let pct = summary.sessionUtilization {
                 claudeProgressRow(
                     label: "Session (5h)",
@@ -454,7 +483,7 @@ struct MenuBarView: View {
                 )
             }
 
-            // Weekly (7d)
+            // 每週用量（7 天窗口）
             if let pct = summary.weeklyUtilization {
                 claudeProgressRow(
                     label: "Weekly (7d)",
@@ -465,7 +494,7 @@ struct MenuBarView: View {
                 )
             }
 
-            // Opus (7d) — only if data present
+            // Opus 模型用量（7 天窗口），僅在有資料時顯示
             if let pct = summary.opusUtilization {
                 claudeProgressRow(
                     label: "Opus (7d)",
@@ -476,7 +505,7 @@ struct MenuBarView: View {
                 )
             }
 
-            // Extra Usage — only if enabled
+            // 額外用量，僅在啟用時顯示
             if summary.hasExtraUsage {
                 HStack {
                     Text("Extra Usage")
@@ -495,6 +524,11 @@ struct MenuBarView: View {
         .padding(12)
     }
 
+    /// Claude Code 用量進度列，顯示標籤、百分比與重設倒數。
+    /// - Parameters:
+    ///   - label: 用量窗口的標籤文字
+    ///   - utilization: 使用百分比（0–100）
+    ///   - countdown: 重設倒數文字，若無則隱藏
     @ViewBuilder
     private func claudeProgressRow(label: String, utilization: Int, countdown: String?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -517,6 +551,8 @@ struct MenuBarView: View {
         }
     }
 
+    /// Claude Code 訂閱方案的膠囊徽章。
+    /// - Parameter subscriptionType: 訂閱類型字串（例如 "pro"、"max"）
     @ViewBuilder
     private func claudePlanBadge(subscriptionType: String) -> some View {
         let display = subscriptionType.lowercased()
@@ -541,8 +577,9 @@ struct MenuBarView: View {
             .background(color, in: Capsule())
     }
 
-    // MARK: - Codex Tool Card
+    // MARK: - Codex 工具卡片
 
+    /// Codex 工具卡片，包含可點擊的標題列與可展開的內容區域。
     @ViewBuilder
     private var codexToolCard: some View {
         let tool = ToolKind.codex
@@ -565,6 +602,10 @@ struct MenuBarView: View {
         }
     }
 
+    /// Codex 卡片的標題列佈局。
+    /// - Parameters:
+    ///   - tool: 工具類型
+    ///   - isExpanded: 是否處於展開狀態
     @ViewBuilder
     private func codexCardHeader(tool: ToolKind, isExpanded: Bool) -> some View {
         HStack(spacing: 8) {
@@ -589,6 +630,7 @@ struct MenuBarView: View {
         .contentShape(Rectangle())
     }
 
+    /// Codex 卡片收合時的狀態標籤，顯示偵測狀態與方案徽章。
     @ViewBuilder
     private var codexStatusLabel: some View {
         switch store.codexConnectionState {
@@ -615,6 +657,7 @@ struct MenuBarView: View {
         }
     }
 
+    /// 依據連線狀態切換不同的 Codex 展開內容。
     @ViewBuilder
     private var codexExpandedContent: some View {
         switch store.codexConnectionState {
@@ -626,6 +669,7 @@ struct MenuBarView: View {
         }
     }
 
+    /// Codex 未偵測到憑證時的提示與重新偵測按鈕。
     @ViewBuilder
     private var codexNotDetectedContent: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -643,6 +687,7 @@ struct MenuBarView: View {
         .padding(12)
     }
 
+    /// Codex 已連線時的完整內容，包含用量摘要、錯誤提示與重新整理按鈕。
     @ViewBuilder
     private var codexConnectedContent: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -658,7 +703,7 @@ struct MenuBarView: View {
                 codexUsageSummaryView(summary: summary)
             }
 
-            // Error
+            // 錯誤訊息提示
             if let error = store.codexErrorMessage {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -681,7 +726,7 @@ struct MenuBarView: View {
             Divider()
                 .padding(.horizontal, 12)
 
-            // Refresh button
+            // 重新整理按鈕
             HStack {
                 Button {
                     store.send(.fetchCodexUsage)
@@ -699,12 +744,14 @@ struct MenuBarView: View {
         }
     }
 
-    // MARK: - Codex Usage Summary
+    // MARK: - Codex 用量摘要
 
+    /// Codex 用量摘要視圖，顯示各時間窗口、模型限制、Code Review 與 Credits。
+    /// - Parameter summary: Codex 用量摘要資料
     @ViewBuilder
     private func codexUsageSummaryView(summary: CodexUsageSummary) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Session (5h)
+            // 工作階段用量（5 小時窗口）
             if let pct = summary.sessionUsedPercent {
                 codexProgressRow(
                     label: "Session (5h)",
@@ -713,7 +760,7 @@ struct MenuBarView: View {
                 )
             }
 
-            // Weekly (7d)
+            // 每週用量（7 天窗口）
             if let pct = summary.weeklyUsedPercent {
                 codexProgressRow(
                     label: "Weekly (7d)",
@@ -722,7 +769,7 @@ struct MenuBarView: View {
                 )
             }
 
-            // Per-model additional limits
+            // 各模型的額外限制
             if summary.hasAdditionalLimits {
                 ForEach(Array(summary.additionalLimits.enumerated()), id: \.offset) { _, limit in
                     if let pct = limit.sessionUsedPercent {
@@ -742,7 +789,7 @@ struct MenuBarView: View {
                 }
             }
 
-            // Code Reviews (7d)
+            // Code Review 用量（7 天窗口）
             if let pct = summary.codeReviewUsedPercent {
                 codexProgressRow(
                     label: "Code Reviews (7d)",
@@ -751,7 +798,7 @@ struct MenuBarView: View {
                 )
             }
 
-            // Credits
+            // 點數餘額
             if let balance = summary.creditsBalance {
                 HStack {
                     Text("Credits")
@@ -767,6 +814,11 @@ struct MenuBarView: View {
         .padding(12)
     }
 
+    /// Codex 用量進度列，顯示標籤、百分比與重設倒數。
+    /// - Parameters:
+    ///   - label: 用量窗口的標籤文字
+    ///   - usedPercent: 使用百分比（0–100）
+    ///   - countdown: 重設倒數文字，若無則隱藏
     @ViewBuilder
     private func codexProgressRow(label: String, usedPercent: Int, countdown: String?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -789,6 +841,8 @@ struct MenuBarView: View {
         }
     }
 
+    /// Codex 方案的膠囊徽章。
+    /// - Parameter planType: 方案類型字串（例如 "plus"、"pro"）
     @ViewBuilder
     private func codexPlanBadge(planType: String) -> some View {
         let display = planType.lowercased()
@@ -817,8 +871,10 @@ struct MenuBarView: View {
             .background(color, in: Capsule())
     }
 
-    // MARK: - Coming Soon Card
+    // MARK: - 即將推出卡片
 
+    /// 尚未上線工具的靜態卡片，以低透明度與「Coming Soon」標示。
+    /// - Parameter tool: 工具類型
     @ViewBuilder
     private func comingSoonCard(tool: ToolKind) -> some View {
         HStack(spacing: 8) {
@@ -844,8 +900,9 @@ struct MenuBarView: View {
         .padding(.vertical, 10)
     }
 
-    // MARK: - Footer
+    // MARK: - 底部列
 
+    /// 底部動作列，提供結束應用程式的按鈕。
     @ViewBuilder
     private var footerView: some View {
         HStack {
@@ -861,9 +918,10 @@ struct MenuBarView: View {
         .padding(.vertical, 8)
     }
 
-    // MARK: - Tool Icon
+    // MARK: - 工具圖示
 
-    /// Renders the tool's asset catalog image, applying its brand tint color when defined.
+    /// 繪製工具的 Asset Catalog 圖片，若有品牌色調則套用 template 著色。
+    /// - Parameter tool: 工具類型
     @ViewBuilder
     private func toolIcon(_ tool: ToolKind) -> some View {
         if let tint = tool.tintColor {
@@ -882,8 +940,10 @@ struct MenuBarView: View {
         }
     }
 
-    // MARK: - Plan Badge (Copilot)
+    // MARK: - Copilot 方案徽章
 
+    /// Copilot 方案的膠囊徽章。
+    /// - Parameter plan: Copilot 方案類型
     @ViewBuilder
     private func planBadge(plan: CopilotPlan) -> some View {
         Text(plan.badgeLabel)
@@ -894,6 +954,9 @@ struct MenuBarView: View {
             .background(planBadgeColor(for: plan), in: Capsule())
     }
 
+    /// 取得 Copilot 方案對應的徽章顏色。
+    /// - Parameter plan: Copilot 方案類型
+    /// - Returns: 對應的顏色
     private func planBadgeColor(for plan: CopilotPlan) -> Color {
         switch plan {
         case .free: .gray
@@ -902,8 +965,10 @@ struct MenuBarView: View {
         }
     }
 
-    // MARK: - Copilot Usage Summary
+    // MARK: - Copilot 用量摘要
 
+    /// Copilot 用量摘要視圖，依方案類型切換免費/付費的顯示佈局。
+    /// - Parameter summary: Copilot 用量摘要資料
     @ViewBuilder
     private func usageSummaryView(summary: CopilotUsageSummary) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -916,11 +981,13 @@ struct MenuBarView: View {
         .padding(12)
     }
 
-    // MARK: - Paid Tier Usage
+    // MARK: - 付費方案用量
 
+    /// 付費方案的用量顯示，包含 Premium Requests 進度條與統計數據列。
+    /// - Parameter summary: Copilot 用量摘要資料
     @ViewBuilder
     private func paidTierUsageView(summary: CopilotUsageSummary) -> some View {
-        // Premium requests progress bar
+        // Premium Requests 進度條
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text("Premium Requests")
@@ -935,7 +1002,7 @@ struct MenuBarView: View {
             progressBar(percentage: summary.usagePercentage)
         }
 
-        // Stats row
+        // 統計數據列：剩餘次數、已使用百分比、重設剩餘天數
         HStack {
             VStack(alignment: .leading) {
                 Text("\(summary.remaining)")
@@ -968,11 +1035,13 @@ struct MenuBarView: View {
         }
     }
 
-    // MARK: - Free Tier Usage
+    // MARK: - 免費方案用量
 
+    /// 免費方案的用量顯示，分別顯示 Chat 和 Completions 的配額進度。
+    /// - Parameter summary: Copilot 用量摘要資料
     @ViewBuilder
     private func freeTierUsageView(summary: CopilotUsageSummary) -> some View {
-        // Chat quota
+        // Chat 配額
         if let chatRemaining = summary.freeChatRemaining,
            let chatTotal = summary.freeChatTotal, chatTotal > 0
         {
@@ -992,7 +1061,7 @@ struct MenuBarView: View {
             }
         }
 
-        // Completions quota
+        // Completions 配額
         if let compRemaining = summary.freeCompletionsRemaining,
            let compTotal = summary.freeCompletionsTotal, compTotal > 0
         {
@@ -1012,7 +1081,7 @@ struct MenuBarView: View {
             }
         }
 
-        // Days left
+        // 重設剩餘天數
         HStack {
             Spacer()
             VStack(alignment: .center) {
@@ -1026,8 +1095,10 @@ struct MenuBarView: View {
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - 共用輔助工具
 
+    /// 繪製水平進度條，依據百分比著色。
+    /// - Parameter percentage: 使用百分比（0.0–1.0）
     @ViewBuilder
     private func progressBar(percentage: Double) -> some View {
         GeometryReader { geometry in
@@ -1050,11 +1121,14 @@ struct MenuBarView: View {
         .frame(height: 8)
     }
 
+    /// 依據使用百分比回傳對應的顏色（綠 → 黃 → 橘 → 紅）。
+    /// - Parameter percentage: 使用百分比（0.0–1.0）
+    /// - Returns: 對應的顏色
     private func progressColor(for percentage: Double) -> Color {
         switch percentage {
         case ..<0.5: .green
-        case 0.5 ..< 0.8: .yellow
-        case 0.8 ..< 1.0: .orange
+        case 0.5..<0.8: .yellow
+        case 0.8..<1.0: .orange
         default: .red
         }
     }
