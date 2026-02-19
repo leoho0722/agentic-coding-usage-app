@@ -52,6 +52,14 @@ public enum ClaudeAPIError: LocalizedError, Sendable {
     /// 解碼失敗，附帶底層錯誤與原始回應。
     case decodingFailed(underlyingError: any Error, rawResponse: String)
     
+    /// 是否為 refresh token 過期導致的 HTTP 400 錯誤。
+    public var isRefreshTokenExpired: Bool {
+        if case let .refreshFailed(statusCode, _) = self, statusCode == 400 {
+            return true
+        }
+        return false
+    }
+
     public var errorDescription: String? {
         switch self {
         case .credentialsNotFound:

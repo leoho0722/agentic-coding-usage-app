@@ -27,7 +27,13 @@ extension UsageCommand {
         }
 
         // 必要時重新整理存取權杖
-        let refreshed = try await claudeClient.refreshTokenIfNeeded(credentials)
+        let refreshed: ClaudeOAuth
+        do {
+            refreshed = try await claudeClient.refreshTokenIfNeeded(credentials)
+        } catch let error as ClaudeAPIError where error.isRefreshTokenExpired {
+            print("  [Claude Code] Refresh token expired. Please re-login via terminal: claude login")
+            return
+        }
         let response = try await claudeClient.fetchUsage(refreshed.accessToken)
         let summary = ClaudeUsageSummary(
             subscriptionType: refreshed.subscriptionType,

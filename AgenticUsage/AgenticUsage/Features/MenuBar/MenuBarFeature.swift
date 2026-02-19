@@ -474,9 +474,16 @@ struct MenuBarFeature {
                     )
                     await send(.claudeUsageResponse(summary))
                 } catch: { error, send in
-                    await send(.claudeUsageFailed(error.localizedDescription))
+                    // Refresh token 過期（HTTP 400）時，視為未偵測到憑證，引導使用者重新登入
+                    if let apiError = error as? ClaudeAPIError,
+                       case let .refreshFailed(statusCode, _) = apiError,
+                       statusCode == 400 {
+                        await send(.claudeUsageFailed("notDetected"))
+                    } else {
+                        await send(.claudeUsageFailed(error.localizedDescription))
+                    }
                 }
-                
+
             case .fetchClaudeUsage:
                 state.isClaudeLoading = true
                 state.claudeErrorMessage = nil
@@ -494,9 +501,16 @@ struct MenuBarFeature {
                     )
                     await send(.claudeUsageResponse(summary))
                 } catch: { error, send in
-                    await send(.claudeUsageFailed(error.localizedDescription))
+                    // Refresh token 過期（HTTP 400）時，視為未偵測到憑證，引導使用者重新登入
+                    if let apiError = error as? ClaudeAPIError,
+                       case let .refreshFailed(statusCode, _) = apiError,
+                       statusCode == 400 {
+                        await send(.claudeUsageFailed("notDetected"))
+                    } else {
+                        await send(.claudeUsageFailed(error.localizedDescription))
+                    }
                 }
-                
+
             case let .claudeUsageResponse(summary):
                 state.isClaudeLoading = false
                 state.claudeConnectionState = .connected(subscriptionType: summary.subscriptionType)
