@@ -6,10 +6,10 @@ import ComposableArchitecture
 
 /// MenuBar 視窗的主要視圖，以手風琴式卡片佈局呈現各工具的用量資訊。
 struct MenuBarView: View {
-    
+
     /// TCA Store 的綁定參考
     @Bindable var store: StoreOf<MenuBarFeature>
-    
+
     /// 系統目前的外觀模式（Light/Dark），用於工具圖示切換
     @Environment(\.colorScheme) private var colorScheme
 
@@ -67,11 +67,63 @@ struct MenuBarView: View {
         .padding(.vertical, 10)
     }
 
-    // MARK: - Copilot 工具卡片
+    // MARK: - 即將推出卡片
+
+    /// 尚未上線工具的靜態卡片，以低透明度與「Coming Soon」標示。
+    /// - Parameter tool: 工具類型
+    @ViewBuilder
+    private func comingSoonCard(tool: ToolKind) -> some View {
+        HStack(spacing: 8) {
+            toolIcon(tool)
+                .opacity(0.4)
+
+            Text(tool.displayName)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundStyle(.tertiary)
+
+            Text("|")
+                .font(.caption)
+                .foregroundStyle(.quaternary)
+
+            Text("Coming Soon")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+
+    // MARK: - 底部列
+
+    /// 底部動作列，提供結束應用程式的按鈕。
+    @ViewBuilder
+    private var footerView: some View {
+        HStack {
+            Spacer()
+            Button("Quit") {
+                store.send(.quitApp)
+            }
+            .buttonStyle(.borderless)
+            .font(.caption)
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+}
+
+// MARK: - Copilot
+
+extension MenuBarView {
+
+    // MARK: 工具卡片
 
     /// Copilot 工具卡片，包含可點擊的標題列與可展開的內容區域。
     @ViewBuilder
-    private var copilotToolCard: some View {
+    var copilotToolCard: some View {
         let tool = ToolKind.copilot
         let isExpanded = store.expandedTool == tool
 
@@ -152,14 +204,14 @@ struct MenuBarView: View {
                 Text("@\(user.login)")
                     .foregroundStyle(.secondary)
                 if let plan = store.detectedPlan {
-                    planBadge(plan: plan)
+                    copilotPlanBadge(plan: plan)
                 }
             }
             .font(.caption)
         }
     }
 
-    // MARK: - Copilot 展開內容
+    // MARK: 展開內容
 
     /// 依據認證狀態切換不同的 Copilot 展開內容。
     @ViewBuilder
@@ -247,7 +299,7 @@ struct MenuBarView: View {
                 }
                 .padding(12)
             } else if let summary = store.usageSummary {
-                usageSummaryView(summary: summary)
+                copilotUsageSummaryView(summary: summary)
             }
 
             // 錯誤訊息提示
@@ -298,11 +350,167 @@ struct MenuBarView: View {
         }
     }
 
-    // MARK: - Claude Code 工具卡片
+    // MARK: 方案徽章
+
+    /// Copilot 方案的膠囊徽章。
+    /// - Parameter plan: Copilot 方案類型
+    @ViewBuilder
+    private func copilotPlanBadge(plan: CopilotPlan) -> some View {
+        Text(plan.badgeLabel)
+            .font(.system(.caption2, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(copilotPlanBadgeColor(for: plan), in: Capsule())
+    }
+
+    /// 取得 Copilot 方案對應的徽章顏色。
+    /// - Parameter plan: Copilot 方案類型
+    /// - Returns: 對應的顏色
+    private func copilotPlanBadgeColor(for plan: CopilotPlan) -> Color {
+        switch plan {
+        case .free: .gray
+        case .pro: .blue
+        case .proPlus: .purple
+        }
+    }
+
+    // MARK: 用量摘要
+
+    /// Copilot 用量摘要視圖，依方案類型切換免費/付費的顯示佈局。
+    /// - Parameter summary: Copilot 用量摘要資料
+    @ViewBuilder
+    private func copilotUsageSummaryView(summary: CopilotUsageSummary) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if summary.isFreeTier {
+                copilotFreeTierUsageView(summary: summary)
+            } else {
+                copilotPaidTierUsageView(summary: summary)
+            }
+        }
+        .padding(12)
+    }
+
+    /// 付費方案的用量顯示，包含 Premium Requests 進度條與統計數據列。
+    /// - Parameter summary: Copilot 用量摘要資料
+    @ViewBuilder
+    private func copilotPaidTierUsageView(summary: CopilotUsageSummary) -> some View {
+        // Premium Requests 進度條
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Premium Requests")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                Spacer()
+                Text("\(summary.premiumRequestsUsed) / \(summary.planLimit)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            progressBar(percentage: summary.usagePercentage)
+        }
+
+        // 統計數據列：剩餘次數、已使用百分比、重設剩餘天數
+        HStack {
+            VStack(alignment: .leading) {
+                Text("\(summary.remaining)")
+                    .font(.system(.title3, design: .rounded, weight: .semibold))
+                Text("remaining")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            VStack(alignment: .center) {
+                Text("\(Int(summary.usagePercentage * 100))%")
+                    .font(.system(.title3, design: .rounded, weight: .semibold))
+                    .foregroundStyle(progressColor(for: summary.usagePercentage))
+                Text("used")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing) {
+                Text("\(summary.daysUntilReset)")
+                    .font(.system(.title3, design: .rounded, weight: .semibold))
+                Text("days left")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// 免費方案的用量顯示，分別顯示 Chat 和 Completions 的配額進度。
+    /// - Parameter summary: Copilot 用量摘要資料
+    @ViewBuilder
+    private func copilotFreeTierUsageView(summary: CopilotUsageSummary) -> some View {
+        // Chat 配額
+        if let chatRemaining = summary.freeChatRemaining,
+           let chatTotal = summary.freeChatTotal, chatTotal > 0
+        {
+            let chatUsed = chatTotal - chatRemaining
+            let chatPercent = Double(chatUsed) / Double(chatTotal)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Chat")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                    Spacer()
+                    Text("\(chatUsed) / \(chatTotal)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                progressBar(percentage: chatPercent)
+            }
+        }
+
+        // Completions 配額
+        if let compRemaining = summary.freeCompletionsRemaining,
+           let compTotal = summary.freeCompletionsTotal, compTotal > 0
+        {
+            let compUsed = compTotal - compRemaining
+            let compPercent = Double(compUsed) / Double(compTotal)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Completions")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                    Spacer()
+                    Text("\(compUsed) / \(compTotal)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                progressBar(percentage: compPercent)
+            }
+        }
+
+        // 重設剩餘天數
+        HStack {
+            Spacer()
+            VStack(alignment: .center) {
+                Text("\(summary.daysUntilReset)")
+                    .font(.system(.title3, design: .rounded, weight: .semibold))
+                Text("days until reset")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Claude Code
+
+extension MenuBarView {
+
+    // MARK: 工具卡片
 
     /// Claude Code 工具卡片，包含可點擊的標題列與可展開的內容區域。
     @ViewBuilder
-    private var claudeToolCard: some View {
+    var claudeToolCard: some View {
         let tool = ToolKind.claudeCode
         let isExpanded = store.expandedTool == tool
 
@@ -377,6 +585,8 @@ struct MenuBarView: View {
             .font(.caption)
         }
     }
+
+    // MARK: 展開內容
 
     /// 依據連線狀態切換不同的 Claude Code 展開內容。
     @ViewBuilder
@@ -465,7 +675,45 @@ struct MenuBarView: View {
         }
     }
 
-    // MARK: - Claude Code 用量摘要
+    // MARK: 方案徽章
+
+    /// Claude Code 訂閱方案的膠囊徽章。
+    /// - Parameter subscriptionType: 訂閱類型字串（例如 "pro"、"max"）
+    @ViewBuilder
+    private func claudePlanBadge(subscriptionType: String) -> some View {
+        Text(claudePlanBadgeLabel(for: subscriptionType))
+            .font(.system(.caption2, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(claudePlanBadgeColor(for: subscriptionType), in: Capsule())
+    }
+
+    /// 取得 Claude Code 訂閱類型對應的徽章標籤。
+    /// - Parameter subscriptionType: 訂閱類型字串
+    /// - Returns: 對應的顯示標籤
+    private func claudePlanBadgeLabel(for subscriptionType: String) -> String {
+        switch subscriptionType.lowercased() {
+        case "pro": "Pro"
+        case "max", "pro_plus": "Max"
+        case "free": "Free"
+        default: subscriptionType.lowercased().capitalized
+        }
+    }
+
+    /// 取得 Claude Code 訂閱類型對應的徽章顏色。
+    /// - Parameter subscriptionType: 訂閱類型字串
+    /// - Returns: 對應的顏色
+    private func claudePlanBadgeColor(for subscriptionType: String) -> Color {
+        switch subscriptionType.lowercased() {
+        case "free": .gray
+        case "pro": .orange
+        case "max", "pro_plus": .purple
+        default: .blue
+        }
+    }
+
+    // MARK: 用量摘要
 
     /// Claude Code 用量摘要視圖，顯示各時間窗口的使用百分比與額外用量。
     /// - Parameter summary: Claude Code 用量摘要資料
@@ -550,38 +798,17 @@ struct MenuBarView: View {
             progressBar(percentage: Double(utilization) / 100.0)
         }
     }
+}
 
-    /// Claude Code 訂閱方案的膠囊徽章。
-    /// - Parameter subscriptionType: 訂閱類型字串（例如 "pro"、"max"）
-    @ViewBuilder
-    private func claudePlanBadge(subscriptionType: String) -> some View {
-        let display = subscriptionType.lowercased()
-        let label: String = switch display {
-        case "pro": "Pro"
-        case "max", "pro_plus": "Max"
-        case "free": "Free"
-        default: display.capitalized
-        }
-        let color: Color = switch display {
-        case "free": .gray
-        case "pro": .orange
-        case "max", "pro_plus": .purple
-        default: .blue
-        }
+// MARK: - Codex
 
-        Text(label)
-            .font(.system(.caption2, weight: .semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 1)
-            .background(color, in: Capsule())
-    }
+extension MenuBarView {
 
-    // MARK: - Codex 工具卡片
+    // MARK: 工具卡片
 
     /// Codex 工具卡片，包含可點擊的標題列與可展開的內容區域。
     @ViewBuilder
-    private var codexToolCard: some View {
+    var codexToolCard: some View {
         let tool = ToolKind.codex
         let isExpanded = store.expandedTool == tool
 
@@ -656,6 +883,8 @@ struct MenuBarView: View {
             .font(.caption)
         }
     }
+
+    // MARK: 展開內容
 
     /// 依據連線狀態切換不同的 Codex 展開內容。
     @ViewBuilder
@@ -744,7 +973,49 @@ struct MenuBarView: View {
         }
     }
 
-    // MARK: - Codex 用量摘要
+    // MARK: 方案徽章
+
+    /// Codex 方案的膠囊徽章。
+    /// - Parameter planType: 方案類型字串（例如 "plus"、"pro"）
+    @ViewBuilder
+    private func codexPlanBadge(planType: String) -> some View {
+        Text(codexPlanBadgeLabel(for: planType))
+            .font(.system(.caption2, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(codexPlanBadgeColor(for: planType), in: Capsule())
+    }
+
+    /// 取得 Codex 方案類型對應的徽章標籤。
+    /// - Parameter planType: 方案類型字串
+    /// - Returns: 對應的顯示標籤
+    private func codexPlanBadgeLabel(for planType: String) -> String {
+        switch planType.lowercased() {
+        case "free": "Free"
+        case "plus": "Plus"
+        case "pro": "Pro"
+        case "team": "Team"
+        case "enterprise": "Enterprise"
+        default: planType.lowercased().capitalized
+        }
+    }
+
+    /// 取得 Codex 方案類型對應的徽章顏色。
+    /// - Parameter planType: 方案類型字串
+    /// - Returns: 對應的顏色
+    private func codexPlanBadgeColor(for planType: String) -> Color {
+        switch planType.lowercased() {
+        case "free": .gray
+        case "plus": .blue
+        case "pro": .green
+        case "team": .orange
+        case "enterprise": .purple
+        default: .blue
+        }
+    }
+
+    // MARK: 用量摘要
 
     /// Codex 用量摘要視圖，顯示各時間窗口、模型限制、Code Review 與 Credits。
     /// - Parameter summary: Codex 用量摘要資料
@@ -840,90 +1111,16 @@ struct MenuBarView: View {
             progressBar(percentage: Double(usedPercent) / 100.0)
         }
     }
+}
 
-    /// Codex 方案的膠囊徽章。
-    /// - Parameter planType: 方案類型字串（例如 "plus"、"pro"）
-    @ViewBuilder
-    private func codexPlanBadge(planType: String) -> some View {
-        let display = planType.lowercased()
-        let label: String = switch display {
-        case "free": "Free"
-        case "plus": "Plus"
-        case "pro": "Pro"
-        case "team": "Team"
-        case "enterprise": "Enterprise"
-        default: display.capitalized
-        }
-        let color: Color = switch display {
-        case "free": .gray
-        case "plus": .blue
-        case "pro": .green
-        case "team": .orange
-        case "enterprise": .purple
-        default: .blue
-        }
+// MARK: - 共用輔助工具
 
-        Text(label)
-            .font(.system(.caption2, weight: .semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 1)
-            .background(color, in: Capsule())
-    }
-
-    // MARK: - 即將推出卡片
-
-    /// 尚未上線工具的靜態卡片，以低透明度與「Coming Soon」標示。
-    /// - Parameter tool: 工具類型
-    @ViewBuilder
-    private func comingSoonCard(tool: ToolKind) -> some View {
-        HStack(spacing: 8) {
-            toolIcon(tool)
-                .opacity(0.4)
-
-            Text(tool.displayName)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundStyle(.tertiary)
-
-            Text("|")
-                .font(.caption)
-                .foregroundStyle(.quaternary)
-
-            Text("Coming Soon")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-
-            Spacer()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-    }
-
-    // MARK: - 底部列
-
-    /// 底部動作列，提供結束應用程式的按鈕。
-    @ViewBuilder
-    private var footerView: some View {
-        HStack {
-            Spacer()
-            Button("Quit") {
-                store.send(.quitApp)
-            }
-            .buttonStyle(.borderless)
-            .font(.caption)
-            Spacer()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-    }
-
-    // MARK: - 工具圖示
+extension MenuBarView {
 
     /// 繪製工具的 Asset Catalog 圖片，若有品牌色調則套用 template 著色。
     /// - Parameter tool: 工具類型
     @ViewBuilder
-    private func toolIcon(_ tool: ToolKind) -> some View {
+    func toolIcon(_ tool: ToolKind) -> some View {
         if let tint = tool.tintColor {
             Image(tool.imageName(for: colorScheme))
                 .renderingMode(.template)
@@ -940,167 +1137,10 @@ struct MenuBarView: View {
         }
     }
 
-    // MARK: - Copilot 方案徽章
-
-    /// Copilot 方案的膠囊徽章。
-    /// - Parameter plan: Copilot 方案類型
-    @ViewBuilder
-    private func planBadge(plan: CopilotPlan) -> some View {
-        Text(plan.badgeLabel)
-            .font(.system(.caption2, weight: .semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 1)
-            .background(planBadgeColor(for: plan), in: Capsule())
-    }
-
-    /// 取得 Copilot 方案對應的徽章顏色。
-    /// - Parameter plan: Copilot 方案類型
-    /// - Returns: 對應的顏色
-    private func planBadgeColor(for plan: CopilotPlan) -> Color {
-        switch plan {
-        case .free: .gray
-        case .pro: .blue
-        case .proPlus: .purple
-        }
-    }
-
-    // MARK: - Copilot 用量摘要
-
-    /// Copilot 用量摘要視圖，依方案類型切換免費/付費的顯示佈局。
-    /// - Parameter summary: Copilot 用量摘要資料
-    @ViewBuilder
-    private func usageSummaryView(summary: CopilotUsageSummary) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if summary.isFreeTier {
-                freeTierUsageView(summary: summary)
-            } else {
-                paidTierUsageView(summary: summary)
-            }
-        }
-        .padding(12)
-    }
-
-    // MARK: - 付費方案用量
-
-    /// 付費方案的用量顯示，包含 Premium Requests 進度條與統計數據列。
-    /// - Parameter summary: Copilot 用量摘要資料
-    @ViewBuilder
-    private func paidTierUsageView(summary: CopilotUsageSummary) -> some View {
-        // Premium Requests 進度條
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text("Premium Requests")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                Spacer()
-                Text("\(summary.premiumRequestsUsed) / \(summary.planLimit)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            progressBar(percentage: summary.usagePercentage)
-        }
-
-        // 統計數據列：剩餘次數、已使用百分比、重設剩餘天數
-        HStack {
-            VStack(alignment: .leading) {
-                Text("\(summary.remaining)")
-                    .font(.system(.title3, design: .rounded, weight: .semibold))
-                Text("remaining")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            VStack(alignment: .center) {
-                Text("\(Int(summary.usagePercentage * 100))%")
-                    .font(.system(.title3, design: .rounded, weight: .semibold))
-                    .foregroundStyle(progressColor(for: summary.usagePercentage))
-                Text("used")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing) {
-                Text("\(summary.daysUntilReset)")
-                    .font(.system(.title3, design: .rounded, weight: .semibold))
-                Text("days left")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    // MARK: - 免費方案用量
-
-    /// 免費方案的用量顯示，分別顯示 Chat 和 Completions 的配額進度。
-    /// - Parameter summary: Copilot 用量摘要資料
-    @ViewBuilder
-    private func freeTierUsageView(summary: CopilotUsageSummary) -> some View {
-        // Chat 配額
-        if let chatRemaining = summary.freeChatRemaining,
-           let chatTotal = summary.freeChatTotal, chatTotal > 0
-        {
-            let chatUsed = chatTotal - chatRemaining
-            let chatPercent = Double(chatUsed) / Double(chatTotal)
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Chat")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                    Spacer()
-                    Text("\(chatUsed) / \(chatTotal)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                progressBar(percentage: chatPercent)
-            }
-        }
-
-        // Completions 配額
-        if let compRemaining = summary.freeCompletionsRemaining,
-           let compTotal = summary.freeCompletionsTotal, compTotal > 0
-        {
-            let compUsed = compTotal - compRemaining
-            let compPercent = Double(compUsed) / Double(compTotal)
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Completions")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                    Spacer()
-                    Text("\(compUsed) / \(compTotal)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                progressBar(percentage: compPercent)
-            }
-        }
-
-        // 重設剩餘天數
-        HStack {
-            Spacer()
-            VStack(alignment: .center) {
-                Text("\(summary.daysUntilReset)")
-                    .font(.system(.title3, design: .rounded, weight: .semibold))
-                Text("days until reset")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-        }
-    }
-
-    // MARK: - 共用輔助工具
-
     /// 繪製水平進度條，依據百分比著色。
     /// - Parameter percentage: 使用百分比（0.0–1.0）
     @ViewBuilder
-    private func progressBar(percentage: Double) -> some View {
+    func progressBar(percentage: Double) -> some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 4)
@@ -1124,7 +1164,7 @@ struct MenuBarView: View {
     /// 依據使用百分比回傳對應的顏色（綠 → 黃 → 橘 → 紅）。
     /// - Parameter percentage: 使用百分比（0.0–1.0）
     /// - Returns: 對應的顏色
-    private func progressColor(for percentage: Double) -> Color {
+    func progressColor(for percentage: Double) -> Color {
         switch percentage {
         case ..<0.5: .green
         case 0.5..<0.8: .yellow
