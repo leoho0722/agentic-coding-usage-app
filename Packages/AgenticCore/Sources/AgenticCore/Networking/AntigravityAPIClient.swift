@@ -168,10 +168,15 @@ extension AntigravityAPIClient {
                     throw AntigravityAPIError.invalidResponse
                 }
                 guard (200...299).contains(httpResponse.statusCode) else {
-                    let message = String(data: data, encoding: .utf8) ?? "Unknown error"
+                    // 401 表示 refresh token 已被使用或過期，
+                    // 但 access token 可能仍然有效（例如剛重新登入後），
+                    // 回傳當前憑證讓後續 API 呼叫驗證。
+                    if httpResponse.statusCode == 401 {
+                        return current
+                    }
                     throw AntigravityAPIError.refreshFailed(
                         statusCode: httpResponse.statusCode,
-                        message: message
+                        message: extractErrorMessage(from: data)
                     )
                 }
 
@@ -236,10 +241,9 @@ private func fetchModels(accessToken: String, urlString: String) async throws ->
     }
 
     guard (200...299).contains(httpResponse.statusCode) else {
-        let message = String(data: data, encoding: .utf8) ?? "Unknown error"
         throw AntigravityAPIError.httpError(
             statusCode: httpResponse.statusCode,
-            message: message
+            message: extractErrorMessage(from: data)
         )
     }
 

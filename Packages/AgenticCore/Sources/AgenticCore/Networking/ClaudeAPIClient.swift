@@ -93,18 +93,26 @@ extension ClaudeAPIClient {
     public static func live(clientID: String) -> ClaudeAPIClient {
         ClaudeAPIClient(
             loadCredentials: {
-                // 1. 先嘗試從檔案載入
-                let homeDir = FileManager.default.homeDirectoryForCurrentUser
+                var candidates: [ClaudeOAuth] = []
+
+                // 1. 嘗試從檔案載入
+                // 在 App Sandbox 中，FileManager.homeDirectoryForCurrentUser 回傳容器路徑，
+                // 需使用 getpwuid 取得真實家目錄，搭配 absolute-path entitlement 存取。
+                let homeDir: URL = if let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir {
+                    URL(fileURLWithPath: String(cString: dir))
+                } else {
+                    FileManager.default.homeDirectoryForCurrentUser
+                }
                 let credentialPath = homeDir.appendingPathComponent(ClaudeConstants.credentialRelativePath)
-                
+
                 if let fileData = FileManager.default.contents(atPath: credentialPath.path),
                    let fileText = String(data: fileData, encoding: .utf8),
                    let file = ClaudeCredentialFile.parse(from: fileText),
                    let oauth = file.claudeAiOauth {
-                    return oauth
+                    candidates.append(oauth)
                 }
-                
-                // 2. 備援至 macOS 鑰匙圈
+
+                // 2. macOS 鑰匙圈
                 let query: [String: Any] = [
                     kSecClass as String: kSecClassGenericPassword,
                     kSecAttrService as String: ClaudeConstants.keychainService,
@@ -113,20 +121,19 @@ extension ClaudeAPIClient {
                 ]
                 var result: AnyObject?
                 let status = SecItemCopyMatching(query as CFDictionary, &result)
-                
-                guard status == errSecSuccess,
-                      let data = result as? Data else {
-                    return nil
-                }
-                
-                // 鑰匙圈資料可能是純 JSON 或十六進位編碼
-                if let text = String(data: data, encoding: .utf8),
+
+                if status == errSecSuccess,
+                   let data = result as? Data,
+                   let text = String(data: data, encoding: .utf8),
                    let file = ClaudeCredentialFile.parse(from: text),
                    let oauth = file.claudeAiOauth {
-                    return oauth
+                    candidates.append(oauth)
                 }
-                
-                return nil
+
+                // 從所有來源中選出最新的憑證（依 expiresAt 排序）
+                return candidates.max {
+                    ($0.expiresAt ?? 0) < ($1.expiresAt ?? 0)
+                }
             },
             refreshTokenIfNeeded: { current in
                 guard current.needsRefresh() else {
@@ -152,10 +159,15 @@ extension ClaudeAPIClient {
                     throw ClaudeAPIError.invalidResponse
                 }
                 guard (200...299).contains(httpResponse.statusCode) else {
-                    let message = String(data: data, encoding: .utf8) ?? "Unknown error"
+                    // 401 表示 refresh token 已被使用或過期，
+                    // 但 access token 可能仍然有效（例如剛重新登入後），
+                    // 回傳當前憑證讓後續 API 呼叫驗證。
+                    if httpResponse.statusCode == 401 {
+                        return current
+                    }
                     throw ClaudeAPIError.refreshFailed(
                         statusCode: httpResponse.statusCode,
-                        message: message
+                        message: extractErrorMessage(from: data)
                     )
                 }
                 
@@ -205,10 +217,9 @@ extension ClaudeAPIClient {
                 }
                 
                 guard (200...299).contains(httpResponse.statusCode) else {
-                    let message = String(data: data, encoding: .utf8) ?? "Unknown error"
                     throw ClaudeAPIError.httpError(
                         statusCode: httpResponse.statusCode,
-                        message: message
+                        message: extractErrorMessage(from: data)
                     )
                 }
                 
@@ -232,7 +243,11 @@ extension ClaudeAPIClient {
 ///
 /// - Parameter oauth: 要回寫的 OAuth 憑證。
 private func writeBackCredentials(_ oauth: ClaudeOAuth) {
-    let homeDir = FileManager.default.homeDirectoryForCurrentUser
+    let homeDir: URL = if let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir {
+        URL(fileURLWithPath: String(cString: dir))
+    } else {
+        FileManager.default.homeDirectoryForCurrentUser
+    }
     let credentialPath = homeDir.appendingPathComponent(ClaudeConstants.credentialRelativePath)
     
     // 讀取既有檔案以保留其他欄位

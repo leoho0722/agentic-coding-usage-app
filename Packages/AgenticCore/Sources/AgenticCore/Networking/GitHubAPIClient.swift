@@ -96,7 +96,9 @@ private func validateHTTPResponse(_ response: URLResponse, data: Data) throws {
         throw GitHubAPIError.invalidResponse
     }
     guard (200...299).contains(httpResponse.statusCode) else {
-        let message = String(data: data, encoding: .utf8) ?? "Unknown error"
-        throw GitHubAPIError.httpError(statusCode: httpResponse.statusCode, message: message)
+        throw GitHubAPIError.httpError(
+            statusCode: httpResponse.statusCode,
+            message: extractErrorMessage(from: data)
+        )
     }
 }

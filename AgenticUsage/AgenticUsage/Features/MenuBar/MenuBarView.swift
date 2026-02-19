@@ -607,16 +607,41 @@ extension MenuBarView {
     @ViewBuilder
     private var claudeNotDetectedContent: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("請先透過終端機登入 Claude Code")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if store.isClaudeLoading {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .controlSize(.small)
+                    Spacer()
+                }
+            } else {
+                Text("請先透過終端機登入 Claude Code")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
-            Button("重新偵測") {
-                store.send(.detectClaudeCredentials)
+                Button("重新偵測") {
+                    store.send(.detectClaudeCredentials)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-            .disabled(store.isClaudeLoading)
+
+            // 錯誤訊息提示（偵測失敗時顯示）
+            if let error = store.claudeErrorMessage {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.yellow)
+                    Text(error)
+                        .font(.caption2)
+                    Spacer()
+                    Button {
+                        store.send(.dismissClaudeError)
+                    } label: {
+                        Image(systemName: "xmark.circle")
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
         }
         .padding(12)
     }
@@ -892,16 +917,41 @@ extension MenuBarView {
     @ViewBuilder
     private var codexNotDetectedContent: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("請先透過終端機登入 Codex")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if store.isCodexLoading {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .controlSize(.small)
+                    Spacer()
+                }
+            } else {
+                Text("請先透過終端機登入 Codex")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
-            Button("重新偵測") {
-                store.send(.detectCodexCredentials)
+                Button("重新偵測") {
+                    store.send(.detectCodexCredentials)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-            .disabled(store.isCodexLoading)
+
+            // 錯誤訊息提示（偵測失敗時顯示）
+            if let error = store.codexErrorMessage {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.yellow)
+                    Text(error)
+                        .font(.caption2)
+                    Spacer()
+                    Button {
+                        store.send(.dismissCodexError)
+                    } label: {
+                        Image(systemName: "xmark.circle")
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
         }
         .padding(12)
     }
@@ -1216,7 +1266,6 @@ extension MenuBarView {
                         .foregroundStyle(.yellow)
                     Text(error)
                         .font(.caption2)
-                        .lineLimit(3)
                     Spacer()
                     Button {
                         store.send(.dismissAntigravityError)

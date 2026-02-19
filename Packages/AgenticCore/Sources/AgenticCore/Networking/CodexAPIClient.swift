@@ -91,30 +91,37 @@ extension CodexAPIClient {
     public static func live(clientID: String) -> CodexAPIClient {
         CodexAPIClient(
             loadCredentials: {
-                let fileManager = FileManager.default
-                let homeDir = fileManager.homeDirectoryForCurrentUser
-                
+                var candidates: [CodexOAuth] = []
+
+                // 在 App Sandbox 中，FileManager.homeDirectoryForCurrentUser 回傳容器路徑，
+                // 需使用 getpwuid 取得真實家目錄，搭配 absolute-path entitlement 存取。
+                let homeDir: URL = if let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir {
+                    URL(fileURLWithPath: String(cString: dir))
+                } else {
+                    FileManager.default.homeDirectoryForCurrentUser
+                }
+
                 // 1. 嘗試主要路徑：~/.config/codex/auth.json
                 let primaryPath = homeDir.appendingPathComponent(CodexConstants.credentialRelativePath)
                 if let oauth = loadCredentialFile(at: primaryPath) {
-                    return oauth
+                    candidates.append(oauth)
                 }
-                
+
                 // 2. 嘗試備用路徑：~/.codex/auth.json
                 let fallbackPath = homeDir.appendingPathComponent(CodexConstants.credentialFallbackPath)
                 if let oauth = loadCredentialFile(at: fallbackPath) {
-                    return oauth
+                    candidates.append(oauth)
                 }
-                
+
                 // 3. 嘗試 CODEX_HOME 環境變數
                 if let codexHome = ProcessInfo.processInfo.environment["CODEX_HOME"] {
                     let envPath = URL(fileURLWithPath: codexHome).appendingPathComponent("auth.json")
                     if let oauth = loadCredentialFile(at: envPath) {
-                        return oauth
+                        candidates.append(oauth)
                     }
                 }
-                
-                // 4. 備援至 macOS 鑰匙圈
+
+                // 4. macOS 鑰匙圈
                 let query: [String: Any] = [
                     kSecClass as String: kSecClassGenericPassword,
                     kSecAttrService as String: CodexConstants.keychainService,
@@ -123,19 +130,19 @@ extension CodexAPIClient {
                 ]
                 var result: AnyObject?
                 let status = SecItemCopyMatching(query as CFDictionary, &result)
-                
-                guard status == errSecSuccess,
-                      let data = result as? Data else {
-                    return nil
-                }
-                
-                if let text = String(data: data, encoding: .utf8),
+
+                if status == errSecSuccess,
+                   let data = result as? Data,
+                   let text = String(data: data, encoding: .utf8),
                    let file = CodexCredentialFile.parse(from: text),
                    let oauth = file.toOAuth() {
-                    return oauth
+                    candidates.append(oauth)
                 }
-                
-                return nil
+
+                // 從所有來源中選出最新的憑證（依 lastRefresh 排序）
+                return candidates.max {
+                    ($0.lastRefresh ?? .distantPast) < ($1.lastRefresh ?? .distantPast)
+                }
             },
             refreshTokenIfNeeded: { current in
                 guard current.needsRefresh() else {
@@ -167,10 +174,15 @@ extension CodexAPIClient {
                     throw CodexAPIError.invalidResponse
                 }
                 guard (200...299).contains(httpResponse.statusCode) else {
-                    let message = String(data: data, encoding: .utf8) ?? "Unknown error"
+                    // 401 表示 refresh token 已被使用或過期，
+                    // 但 access token 可能仍然有效（例如剛重新登入後），
+                    // 回傳當前憑證讓後續 API 呼叫驗證。
+                    if httpResponse.statusCode == 401 {
+                        return current
+                    }
                     throw CodexAPIError.refreshFailed(
                         statusCode: httpResponse.statusCode,
-                        message: message
+                        message: extractErrorMessage(from: data)
                     )
                 }
                 
@@ -216,10 +228,9 @@ extension CodexAPIClient {
                 }
                 
                 guard (200...299).contains(httpResponse.statusCode) else {
-                    let message = String(data: data, encoding: .utf8) ?? "Unknown error"
                     throw CodexAPIError.httpError(
                         statusCode: httpResponse.statusCode,
-                        message: message
+                        message: extractErrorMessage(from: data)
                     )
                 }
                 
@@ -264,7 +275,11 @@ private func loadCredentialFile(at url: URL) -> CodexOAuth? {
 ///
 /// - Parameter oauth: 要回寫的 OAuth 憑證。
 private func writeBackCodexCredentials(_ oauth: CodexOAuth) {
-    let homeDir = FileManager.default.homeDirectoryForCurrentUser
+    let homeDir: URL = if let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir {
+        URL(fileURLWithPath: String(cString: dir))
+    } else {
+        FileManager.default.homeDirectoryForCurrentUser
+    }
     let credentialPath = homeDir.appendingPathComponent(CodexConstants.credentialRelativePath)
     
     // 讀取既有檔案以保留其他欄位
