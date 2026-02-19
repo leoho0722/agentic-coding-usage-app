@@ -102,8 +102,8 @@ struct MenuBarFeature {
         /// 未偵測到本地憑證
         case notDetected
         
-        /// 已連線，附帶訂閱類型資訊
-        case connected(subscriptionType: String?)
+        /// 已連線，附帶訂閱方案類型
+        case connected(plan: ClaudePlan?)
     }
     
     /// Codex 的連線狀態列舉。
@@ -112,8 +112,8 @@ struct MenuBarFeature {
         /// 未偵測到本地憑證
         case notDetected
         
-        /// 已連線，附帶方案類型資訊
-        case connected(planType: String?)
+        /// 已連線，附帶方案類型
+        case connected(plan: CodexPlan?)
     }
     
     // MARK: - Action
@@ -469,7 +469,7 @@ struct MenuBarFeature {
                     let refreshed = try await claudeClient.refreshTokenIfNeeded(credentials)
                     let response = try await claudeClient.fetchUsage(refreshed.accessToken)
                     let summary = ClaudeUsageSummary(
-                        subscriptionType: refreshed.subscriptionType,
+                        plan: ClaudePlan.fromAPIString(refreshed.subscriptionType),
                         response: response
                     )
                     await send(.claudeUsageResponse(summary))
@@ -496,7 +496,7 @@ struct MenuBarFeature {
                     let refreshed = try await claudeClient.refreshTokenIfNeeded(credentials)
                     let response = try await claudeClient.fetchUsage(refreshed.accessToken)
                     let summary = ClaudeUsageSummary(
-                        subscriptionType: refreshed.subscriptionType,
+                        plan: ClaudePlan.fromAPIString(refreshed.subscriptionType),
                         response: response
                     )
                     await send(.claudeUsageResponse(summary))
@@ -513,7 +513,7 @@ struct MenuBarFeature {
 
             case let .claudeUsageResponse(summary):
                 state.isClaudeLoading = false
-                state.claudeConnectionState = .connected(subscriptionType: summary.subscriptionType)
+                state.claudeConnectionState = .connected(plan: summary.plan)
                 state.claudeUsageSummary = summary
                 return .send(.checkClaudeUsageThresholds)
                 
@@ -635,7 +635,7 @@ struct MenuBarFeature {
                 
             case let .codexUsageResponse(summary):
                 state.isCodexLoading = false
-                state.codexConnectionState = .connected(planType: summary.planType)
+                state.codexConnectionState = .connected(plan: summary.plan)
                 state.codexUsageSummary = summary
                 return .send(.checkCodexUsageThresholds)
                 

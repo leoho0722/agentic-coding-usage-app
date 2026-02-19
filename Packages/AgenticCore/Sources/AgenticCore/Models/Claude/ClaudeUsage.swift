@@ -99,8 +99,8 @@ public struct ClaudeExtraUsage: Codable, Sendable, Equatable {
 /// 經處理的 Claude Code 用量資料，可直接用於 UI 或 CLI 顯示。
 public struct ClaudeUsageSummary: Equatable, Sendable {
     
-    /// 來自憑證的訂閱類型字串（例如 `"pro"`、`"max"`）。
-    public let subscriptionType: String?
+    /// 訂閱方案類型。
+    public let plan: ClaudePlan?
     
     /// 工作階段（5 小時）使用率百分比（0 至 100），無資料時為 `nil`。
     public let sessionUtilization: Int?
@@ -135,13 +135,13 @@ public struct ClaudeUsageSummary: Equatable, Sendable {
     /// 從 API 回應初始化用量摘要。
     ///
     /// - Parameters:
-    ///   - subscriptionType: 訂閱類型字串。
+    ///   - plan: 訂閱方案類型。
     ///   - response: Claude 用量 API 的原始回應。
     public init(
-        subscriptionType: String?,
+        plan: ClaudePlan?,
         response: ClaudeUsageResponse
     ) {
-        self.subscriptionType = subscriptionType
+        self.plan = plan
         
         self.sessionUtilization = response.fiveHour?.utilization
         self.sessionResetsAt = response.fiveHour?.resetsAt
@@ -181,17 +181,6 @@ public struct ClaudeUsageSummary: Equatable, Sendable {
     public var extraUsageLimitDollars: Double? {
         guard let cents = extraUsageLimitCents else { return nil }
         return Double(cents) / 100.0
-    }
-    
-    /// 格式化的訂閱類型名稱，用於 UI 顯示（例如 `"Pro"`、`"Max"`、`"Free"`）。
-    public var planDisplayName: String {
-        guard let sub = subscriptionType?.lowercased() else { return "Unknown" }
-        switch sub {
-        case "pro": return "Pro"
-        case "max", "pro_plus": return "Max"
-        case "free": return "Free"
-        default: return sub.capitalized
-        }
     }
 }
 

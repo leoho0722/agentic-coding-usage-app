@@ -219,8 +219,8 @@ public struct CodexUsageSummary: Equatable, Sendable {
     /// 額度餘額。
     public let creditsBalance: Double?
     
-    /// 方案類型字串（例如 `"free"`、`"plus"`、`"pro"`、`"team"`、`"enterprise"`）。
-    public let planType: String?
+    /// 訂閱方案類型。
+    public let plan: CodexPlan?
     
     /// 從回應標頭與 Body 初始化用量摘要。
     ///
@@ -269,20 +269,7 @@ public struct CodexUsageSummary: Equatable, Sendable {
             self.creditsBalance = response.credits?.balance
         }
         
-        self.planType = response.planType
-    }
-    
-    /// 格式化的方案名稱，用於 UI 顯示。
-    public var planDisplayName: String {
-        guard let plan = planType?.lowercased() else { return "Unknown" }
-        switch plan {
-        case "free": return "Free"
-        case "plus": return "Plus"
-        case "pro": return "Pro"
-        case "team": return "Team"
-        case "enterprise": return "Enterprise"
-        default: return plan.capitalized
-        }
+        self.plan = CodexPlan.fromAPIString(response.planType)
     }
     
     /// 是否存在各模型的額外限制資料。

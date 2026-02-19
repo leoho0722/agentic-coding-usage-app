@@ -47,7 +47,7 @@ extension UsageCommand {
 
         print()
         print("  OpenAI Codex Usage")
-        print("  Plan: \(summary.planDisplayName)")
+        print("  Plan: \(summary.plan?.badgeLabel ?? "Unknown")")
         print()
 
         // 工作階段用量（5 小時週期）

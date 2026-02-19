@@ -36,8 +36,8 @@ extension UsageCommand {
         }
         let response = try await claudeClient.fetchUsage(refreshed.accessToken)
         let summary = ClaudeUsageSummary(
-            subscriptionType: refreshed.subscriptionType,
-            response: response,
+            plan: ClaudePlan.fromAPIString(refreshed.subscriptionType),
+            response: response
         )
 
         printClaudeDisplay(summary: summary)
@@ -54,7 +54,7 @@ extension UsageCommand {
 
         print()
         print("  Claude Code Usage")
-        print("  Plan: \(summary.planDisplayName)")
+        print("  Plan: \(summary.plan?.badgeLabel ?? "Unknown")")
         print()
 
         // 工作階段用量（5 小時週期）

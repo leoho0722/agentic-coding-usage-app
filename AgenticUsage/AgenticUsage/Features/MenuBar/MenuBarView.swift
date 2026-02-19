@@ -572,14 +572,14 @@ extension MenuBarView {
             }
             .font(.caption)
 
-        case let .connected(subscriptionType):
+        case let .connected(plan):
             Group {
                 Text("|")
                     .foregroundStyle(.quaternary)
                 Text("Connected")
                     .foregroundStyle(.secondary)
-                if let sub = subscriptionType {
-                    claudePlanBadge(subscriptionType: sub)
+                if let plan {
+                    claudePlanBadge(plan: plan)
                 }
             }
             .font(.caption)
@@ -678,38 +678,25 @@ extension MenuBarView {
     // MARK: 方案徽章
 
     /// Claude Code 訂閱方案的膠囊徽章。
-    /// - Parameter subscriptionType: 訂閱類型字串（例如 "pro"、"max"）
+    /// - Parameter plan: Claude 方案類型
     @ViewBuilder
-    private func claudePlanBadge(subscriptionType: String) -> some View {
-        Text(claudePlanBadgeLabel(for: subscriptionType))
+    private func claudePlanBadge(plan: ClaudePlan) -> some View {
+        Text(plan.badgeLabel)
             .font(.system(.caption2, weight: .semibold))
             .foregroundStyle(.white)
             .padding(.horizontal, 6)
             .padding(.vertical, 1)
-            .background(claudePlanBadgeColor(for: subscriptionType), in: Capsule())
+            .background(claudePlanBadgeColor(for: plan), in: Capsule())
     }
 
-    /// 取得 Claude Code 訂閱類型對應的徽章標籤。
-    /// - Parameter subscriptionType: 訂閱類型字串
-    /// - Returns: 對應的顯示標籤
-    private func claudePlanBadgeLabel(for subscriptionType: String) -> String {
-        switch subscriptionType.lowercased() {
-        case "pro": "Pro"
-        case "max", "pro_plus": "Max"
-        case "free": "Free"
-        default: subscriptionType.lowercased().capitalized
-        }
-    }
-
-    /// 取得 Claude Code 訂閱類型對應的徽章顏色。
-    /// - Parameter subscriptionType: 訂閱類型字串
+    /// 取得 Claude Code 方案對應的徽章顏色。
+    /// - Parameter plan: Claude 方案類型
     /// - Returns: 對應的顏色
-    private func claudePlanBadgeColor(for subscriptionType: String) -> Color {
-        switch subscriptionType.lowercased() {
-        case "free": .gray
-        case "pro": .orange
-        case "max", "pro_plus": .purple
-        default: .blue
+    private func claudePlanBadgeColor(for plan: ClaudePlan) -> Color {
+        switch plan {
+        case .free: .gray
+        case .pro: .orange
+        case .max: .purple
         }
     }
 
@@ -870,14 +857,14 @@ extension MenuBarView {
             }
             .font(.caption)
 
-        case let .connected(planType):
+        case let .connected(plan):
             Group {
                 Text("|")
                     .foregroundStyle(.quaternary)
                 Text("Connected")
                     .foregroundStyle(.secondary)
-                if let plan = planType {
-                    codexPlanBadge(planType: plan)
+                if let plan {
+                    codexPlanBadge(plan: plan)
                 }
             }
             .font(.caption)
@@ -976,42 +963,27 @@ extension MenuBarView {
     // MARK: 方案徽章
 
     /// Codex 方案的膠囊徽章。
-    /// - Parameter planType: 方案類型字串（例如 "plus"、"pro"）
+    /// - Parameter plan: Codex 方案類型
     @ViewBuilder
-    private func codexPlanBadge(planType: String) -> some View {
-        Text(codexPlanBadgeLabel(for: planType))
+    private func codexPlanBadge(plan: CodexPlan) -> some View {
+        Text(plan.badgeLabel)
             .font(.system(.caption2, weight: .semibold))
             .foregroundStyle(.white)
             .padding(.horizontal, 6)
             .padding(.vertical, 1)
-            .background(codexPlanBadgeColor(for: planType), in: Capsule())
+            .background(codexPlanBadgeColor(for: plan), in: Capsule())
     }
 
-    /// 取得 Codex 方案類型對應的徽章標籤。
-    /// - Parameter planType: 方案類型字串
-    /// - Returns: 對應的顯示標籤
-    private func codexPlanBadgeLabel(for planType: String) -> String {
-        switch planType.lowercased() {
-        case "free": "Free"
-        case "plus": "Plus"
-        case "pro": "Pro"
-        case "team": "Team"
-        case "enterprise": "Enterprise"
-        default: planType.lowercased().capitalized
-        }
-    }
-
-    /// 取得 Codex 方案類型對應的徽章顏色。
-    /// - Parameter planType: 方案類型字串
+    /// 取得 Codex 方案對應的徽章顏色。
+    /// - Parameter plan: Codex 方案類型
     /// - Returns: 對應的顏色
-    private func codexPlanBadgeColor(for planType: String) -> Color {
-        switch planType.lowercased() {
-        case "free": .gray
-        case "plus": .blue
-        case "pro": .green
-        case "team": .orange
-        case "enterprise": .purple
-        default: .blue
+    private func codexPlanBadgeColor(for plan: CodexPlan) -> Color {
+        switch plan {
+        case .free: .gray
+        case .plus: .blue
+        case .pro: .green
+        case .team: .orange
+        case .enterprise: .purple
         }
     }
 
