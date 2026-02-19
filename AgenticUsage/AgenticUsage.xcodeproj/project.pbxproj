@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		D0A000012F42000000000001 /* AgenticCore in Frameworks */ = {isa = PBXBuildFile; productRef = D0A000002F42000000000001 /* AgenticCore */; };
+		D0B000012F48000000000001 /* AgenticUpdater in Frameworks */ = {isa = PBXBuildFile; productRef = D0B000002F48000000000001 /* AgenticUpdater */; };
 		D0C023862F41F445008A131A /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = D0C023852F41F445008A131A /* ComposableArchitecture */; };
 /* End PBXBuildFile section */
 
@@ -75,6 +76,7 @@
 			files = (
 				D0C023862F41F445008A131A /* ComposableArchitecture in Frameworks */,
 				D0A000012F42000000000001 /* AgenticCore in Frameworks */,
+				D0B000012F48000000000001 /* AgenticUpdater in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -146,6 +148,7 @@
 			packageProductDependencies = (
 				D0C023852F41F445008A131A /* ComposableArchitecture */,
 				D0A000002F42000000000001 /* AgenticCore */,
+				D0B000002F48000000000001 /* AgenticUpdater */,
 			);
 			productName = AgenticUsage;
 			productReference = D0C023552F41EAD1008A131A /* AgenticUsage.app */;
@@ -232,6 +235,7 @@
 			packageReferences = (
 				D0C023832F41F3B1008A131A /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
 				D0A000022F42000000000002 /* XCLocalSwiftPackageReference "../Packages/AgenticCore" */,
+				D0B000022F48000000000002 /* XCLocalSwiftPackageReference "../Packages/AgenticUpdater" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D0C023562F41EAD1008A131A /* Products */;
@@ -439,7 +443,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 23JEQ2524P;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
 				ENABLE_OUTGOING_CONNECTIONS = YES;
@@ -462,7 +466,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.7.2;
+				MARKETING_VERSION = 1.8.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.leoho.AgenticUsage;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -487,7 +491,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 23JEQ2524P;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
 				ENABLE_OUTGOING_CONNECTIONS = YES;
@@ -510,7 +514,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.7.2;
+				MARKETING_VERSION = 1.8.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.leoho.AgenticUsage;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -532,7 +536,7 @@
 				DEVELOPMENT_TEAM = 23JEQ2524P;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.7.2;
+				MARKETING_VERSION = 1.8.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.leoho.AgenticUsageTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -553,7 +557,7 @@
 				DEVELOPMENT_TEAM = 23JEQ2524P;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.7.2;
+				MARKETING_VERSION = 1.8.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.leoho.AgenticUsageTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -572,7 +576,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 23JEQ2524P;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.7.2;
+				MARKETING_VERSION = 1.8.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.leoho.AgenticUsageUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -591,7 +595,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 23JEQ2524P;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.7.2;
+				MARKETING_VERSION = 1.8.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.leoho.AgenticUsageUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -649,6 +653,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../Packages/AgenticCore;
 		};
+		D0B000022F48000000000002 /* XCLocalSwiftPackageReference "../Packages/AgenticUpdater" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../Packages/AgenticUpdater;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -666,6 +674,10 @@
 		D0A000002F42000000000001 /* AgenticCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AgenticCore;
+		};
+		D0B000002F48000000000001 /* AgenticUpdater */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AgenticUpdater;
 		};
 		D0C023852F41F445008A131A /* ComposableArchitecture */ = {
 			isa = XCSwiftPackageProductDependency;

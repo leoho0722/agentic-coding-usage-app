@@ -1,5 +1,6 @@
 import SwiftUI
 import AgenticCore
+import AgenticUpdater
 import ComposableArchitecture
 
 // MARK: - MenuBarView
@@ -17,6 +18,9 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 0) {
             // 頂部標題列：App 名稱 + 版本號
             headerView
+
+            // 更新提示橫幅
+            updateBannerView
 
             Divider()
 
@@ -68,6 +72,71 @@ struct MenuBarView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+    }
+
+    // MARK: - 更新提示
+
+    /// 更新提示橫幅，當檢測到新版本時顯示。
+    @ViewBuilder
+    private var updateBannerView: some View {
+        if let updateInfo = store.updateInfo {
+            Divider()
+
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.up.circle.fill")
+                    .foregroundStyle(.blue)
+                    .font(.subheadline)
+
+                Text("v\(updateInfo.latestVersion) available")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                if store.isUpdating {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Updating...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Button("Update Now") {
+                        store.send(.performUpdate)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.mini)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+
+            // 更新錯誤提示
+            if let error = store.updateError {
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                        .font(.caption2)
+
+                    Text(error)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+
+                    Spacer()
+
+                    Button {
+                        store.send(.dismissUpdateError)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.tertiary)
+                            .font(.caption2)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 6)
+            }
+        }
     }
 
     // MARK: - 即將推出卡片

@@ -1,6 +1,7 @@
 import AppKit
 
 import AgenticCore
+import AgenticUpdater
 import ComposableArchitecture
 
 // MARK: - MenuBarFeature
@@ -79,6 +80,17 @@ struct MenuBarFeature {
 
         /// 目前展開的工具卡片（手風琴），預設為 Copilot
         var expandedTool: ToolKind? = .copilot
+
+        // MARK: Update
+
+        /// 檢查到的更新資訊（nil = 無更新或尚未檢查）
+        var updateInfo: UpdateInfo?
+
+        /// 正在下載/安裝
+        var isUpdating: Bool = false
+
+        /// 更新錯誤訊息
+        var updateError: String?
     }
     
     /// Copilot 的 GitHub OAuth 認證狀態列舉。
@@ -241,8 +253,34 @@ struct MenuBarFeature {
         /// 檢查 Antigravity 用量是否達到通知門檻
         case checkAntigravityUsageThresholds
 
+        // MARK: Update
+
+        /// 啟動時檢查更新
+        case checkForUpdate
+
+        /// 檢查到新版本
+        case updateAvailable(UpdateInfo)
+
+        /// 已是最新版本
+        case updateNotAvailable
+
+        /// 檢查更新失敗（靜默處理）
+        case updateCheckFailed(String)
+
+        /// 使用者點擊「更新」按鈕
+        case performUpdate
+
+        /// 更新完成，準備重啟
+        case updateCompleted
+
+        /// 更新失敗
+        case updateFailed(String)
+
+        /// 關閉更新錯誤訊息
+        case dismissUpdateError
+
         // MARK: UI
-        
+
         /// 切換指定工具卡片的展開/收合狀態
         case toggleToolExpansion(ToolKind)
         
@@ -303,13 +341,14 @@ struct MenuBarFeature {
         Reduce<State, Action> { state, action in
             switch action {
             case .onAppear:
-                // 同時啟動所有工具的初始化流程與通知授權
+                // 同時啟動所有工具的初始化流程、通知授權與更新檢查
                 return .merge(
                     .send(.checkExistingAuth),
                     .send(.detectClaudeCredentials),
                     .send(.detectCodexCredentials),
                     .send(.detectAntigravityCredentials),
-                    .send(.requestNotificationAuthorization)
+                    .send(.requestNotificationAuthorization),
+                    .send(.checkForUpdate)
                 )
                 
             case .requestNotificationAuthorization:
@@ -829,6 +868,67 @@ struct MenuBarFeature {
             case let .usageFailed(message):
                 state.isLoading = false
                 state.errorMessage = message
+                return .none
+
+                // MARK: - Update
+
+            case .checkForUpdate:
+                return .run { send in
+                    @Dependency(\.updateClient) var updateClient
+                    let currentVersion = Bundle.main.shortVersionString
+                    if let info = try await updateClient.checkForUpdate(currentVersion) {
+                        await send(.updateAvailable(info))
+                    } else {
+                        await send(.updateNotAvailable)
+                    }
+                } catch: { error, send in
+                    await send(.updateCheckFailed(error.localizedDescription))
+                }
+
+            case let .updateAvailable(info):
+                state.updateInfo = info
+                return .none
+
+            case .updateNotAvailable:
+                state.updateInfo = nil
+                return .none
+
+            case .updateCheckFailed:
+                // 靜默處理，不顯示錯誤
+                return .none
+
+            case .performUpdate:
+                guard let info = state.updateInfo else { return .none }
+                state.isUpdating = true
+                state.updateError = nil
+                return .run { send in
+                    @Dependency(\.updateClient) var updateClient
+                    let currentAppPath = Bundle.main.bundleURL.path
+                    try await updateClient.performUpdate(info, currentAppPath)
+                    await send(.updateCompleted)
+                } catch: { error, send in
+                    await send(.updateFailed(error.localizedDescription))
+                }
+
+            case .updateCompleted:
+                state.isUpdating = false
+                // 重啟 App：先啟動延遲 shell 再立即結束自己
+                return .run { _ in
+                    @Dependency(\.updateClient) var updateClient
+                    let appPath = Bundle.main.bundleURL.path
+                    try updateClient.relaunchApp(appPath)
+                    await MainActor.run {
+                        NSApplication.shared.terminate(nil)
+                    }
+                } catch: { _, _ in }
+
+            case let .updateFailed(message):
+                state.isUpdating = false
+                state.updateError = message
+                return .none
+
+            case .dismissUpdateError:
+                state.updateError = nil
                 return .none
 
             case let .toggleToolExpansion(tool):
