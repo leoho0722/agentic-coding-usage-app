@@ -14,7 +14,7 @@ enum ToolKind: String, CaseIterable, Identifiable, Equatable, Sendable {
     /// OpenAI Codex
     case codex
     
-    /// Google Antigravity（計劃中）
+    /// Google Antigravity
     case antigravity
 
     /// 唯一識別碼，使用 rawValue
@@ -58,8 +58,7 @@ enum ToolKind: String, CaseIterable, Identifiable, Equatable, Sendable {
     /// 該工具是否已有可運作的整合功能。
     var isAvailable: Bool {
         switch self {
-        case .copilot, .claudeCode, .codex: true
-        case .antigravity: false
+        case .copilot, .claudeCode, .codex, .antigravity: true
         }
     }
 

@@ -17,7 +17,7 @@ struct UsageCommand: AsyncParsableCommand {
     )
 
     /// 要顯示用量的工具名稱，支援 `copilot`、`claude`、`codex` 或 `all`。
-    @Option(name: .long, help: "Tool to show usage for: copilot, claude, codex, or all (default: all).")
+    @Option(name: .long, help: "Tool to show usage for: copilot, claude, codex, antigravity, or all (default: all).")
     var tool: String = "all"
 
     /// 依據篩選條件查詢並顯示各工具的用量資訊。
@@ -30,8 +30,8 @@ struct UsageCommand: AsyncParsableCommand {
     func run() async throws {
         let toolFilter = tool.lowercased()
 
-        guard ["all", "copilot", "claude", "codex"].contains(toolFilter) else {
-            print("Error: Unknown tool '\(tool)'. Use 'copilot', 'claude', 'codex', or 'all'.")
+        guard ["all", "copilot", "claude", "codex", "antigravity"].contains(toolFilter) else {
+            print("Error: Unknown tool '\(tool)'. Use 'copilot', 'claude', 'codex', 'antigravity', or 'all'.")
             throw ExitCode.failure
         }
 
@@ -79,6 +79,21 @@ struct UsageCommand: AsyncParsableCommand {
                     throw error
                 }
                 print("  [Codex] \(error.localizedDescription)")
+                print()
+            }
+        }
+
+        // 查詢 Antigravity 用量
+        if toolFilter == "all" || toolFilter == "antigravity" {
+            if printed { print(String(repeating: "─", count: 40)); print() }
+            do {
+                try await printAntigravityUsage()
+                printed = true
+            } catch {
+                if toolFilter == "antigravity" {
+                    throw error
+                }
+                print("  [Antigravity] \(error.localizedDescription)")
                 print()
             }
         }

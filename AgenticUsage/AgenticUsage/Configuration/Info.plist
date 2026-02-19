@@ -8,5 +8,9 @@
 	<string>$(CLAUDE_CLIENT_ID)</string>
 	<key>CodexClientID</key>
 	<string>$(CODEX_CLIENT_ID)</string>
+	<key>AntigravityClientID</key>
+	<string>$(ANTIGRAVITY_CLIENT_ID)</string>
+	<key>AntigravityClientSecret</key>
+	<string>$(ANTIGRAVITY_CLIENT_SECRET)</string>
 </dict>
 </plist>

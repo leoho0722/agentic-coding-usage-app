@@ -12,5 +12,9 @@
 		<string>.config/codex/</string>
 		<string>.codex/</string>
 	</array>
+	<key>com.apple.security.temporary-exception.files.absolute-path.read-only</key>
+	<array>
+		<string>/Users/</string>
+	</array>
 </dict>
 </plist>

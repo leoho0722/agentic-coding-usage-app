@@ -31,6 +31,9 @@ struct MenuBarView: View {
                     Divider()
                     codexToolCard
 
+                    Divider()
+                    antigravityToolCard
+
                     // 尚未上線的工具顯示「Coming Soon」卡片
                     ForEach(ToolKind.allCases.filter(\.isComingSoon)) { tool in
                         Divider()
@@ -1064,6 +1067,281 @@ extension MenuBarView {
     ///   - countdown: 重設倒數文字，若無則隱藏
     @ViewBuilder
     private func codexProgressRow(label: String, usedPercent: Int, countdown: String?) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                Spacer()
+                Text("\(usedPercent)%")
+                    .font(.caption)
+                    .foregroundStyle(progressColor(for: Double(usedPercent) / 100.0))
+                if let countdown {
+                    Text("· resets in \(countdown)")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            progressBar(percentage: Double(usedPercent) / 100.0)
+        }
+    }
+}
+
+// MARK: - Antigravity
+
+extension MenuBarView {
+
+    // MARK: 工具卡片
+
+    /// Antigravity 工具卡片，包含可點擊的標題列與可展開的內容區域。
+    @ViewBuilder
+    var antigravityToolCard: some View {
+        let tool = ToolKind.antigravity
+        let isExpanded = store.expandedTool == tool
+
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                store.send(.toggleToolExpansion(tool))
+            } label: {
+                antigravityCardHeader(tool: tool, isExpanded: isExpanded)
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                Divider()
+                    .padding(.horizontal, 12)
+
+                antigravityExpandedContent
+            }
+        }
+    }
+
+    /// Antigravity 卡片的標題列佈局。
+    /// - Parameters:
+    ///   - tool: 工具類型
+    ///   - isExpanded: 是否處於展開狀態
+    @ViewBuilder
+    private func antigravityCardHeader(tool: ToolKind, isExpanded: Bool) -> some View {
+        HStack(spacing: 8) {
+            toolIcon(tool)
+
+            Text(tool.displayName)
+                .font(.subheadline)
+                .fontWeight(.medium)
+
+            antigravityStatusLabel
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                .animation(.easeInOut(duration: 0.15), value: isExpanded)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+    }
+
+    /// Antigravity 卡片收合時的狀態標籤，顯示偵測狀態與方案徽章。
+    @ViewBuilder
+    private var antigravityStatusLabel: some View {
+        switch store.antigravityConnectionState {
+        case .notDetected:
+            Group {
+                Text("|")
+                    .foregroundStyle(.quaternary)
+                Text("Not Detected")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.caption)
+
+        case let .connected(plan):
+            Group {
+                Text("|")
+                    .foregroundStyle(.quaternary)
+                Text("Connected")
+                    .foregroundStyle(.secondary)
+                if let plan {
+                    antigravityPlanBadge(plan: plan)
+                }
+            }
+            .font(.caption)
+        }
+    }
+
+    // MARK: 展開內容
+
+    /// 依據連線狀態切換不同的 Antigravity 展開內容。
+    @ViewBuilder
+    private var antigravityExpandedContent: some View {
+        switch store.antigravityConnectionState {
+        case .notDetected:
+            antigravityNotDetectedContent
+
+        case .connected:
+            antigravityConnectedContent
+        }
+    }
+
+    /// Antigravity 未偵測到憑證時的提示與重新偵測按鈕。
+    @ViewBuilder
+    private var antigravityNotDetectedContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if store.isAntigravityLoading {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .controlSize(.small)
+                    Spacer()
+                }
+            } else {
+                Text("請先登入 Google Antigravity IDE")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Button("重新偵測") {
+                    store.send(.detectAntigravityCredentials)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+
+            // 錯誤訊息提示（偵測失敗時顯示）
+            if let error = store.antigravityErrorMessage {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.yellow)
+                    Text(error)
+                        .font(.caption2)
+                        .lineLimit(3)
+                    Spacer()
+                    Button {
+                        store.send(.dismissAntigravityError)
+                    } label: {
+                        Image(systemName: "xmark.circle")
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+        }
+        .padding(12)
+    }
+
+    /// Antigravity 已連線時的完整內容，包含用量摘要、錯誤提示與重新整理按鈕。
+    @ViewBuilder
+    private var antigravityConnectedContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if store.isAntigravityLoading {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .controlSize(.small)
+                    Spacer()
+                }
+                .padding(12)
+            } else if let summary = store.antigravityUsageSummary {
+                antigravityUsageSummaryView(summary: summary)
+            }
+
+            // 錯誤訊息提示
+            if let error = store.antigravityErrorMessage {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.yellow)
+                    Text(error)
+                        .font(.caption2)
+                        .lineLimit(2)
+                    Spacer()
+                    Button {
+                        store.send(.dismissAntigravityError)
+                    } label: {
+                        Image(systemName: "xmark.circle")
+                    }
+                    .buttonStyle(.borderless)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+            }
+
+            Divider()
+                .padding(.horizontal, 12)
+
+            // 重新整理按鈕
+            HStack {
+                Button {
+                    store.send(.fetchAntigravityUsage)
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderless)
+                .disabled(store.isAntigravityLoading)
+
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+    }
+
+    // MARK: 方案徽章
+
+    /// Antigravity 方案的膠囊徽章。
+    /// - Parameter plan: Antigravity 方案類型
+    @ViewBuilder
+    private func antigravityPlanBadge(plan: AntigravityPlan) -> some View {
+        Text(plan.badgeLabel)
+            .font(.system(.caption2, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(antigravityPlanBadgeColor(for: plan), in: Capsule())
+    }
+
+    /// 取得 Antigravity 方案對應的徽章顏色。
+    /// - Parameter plan: Antigravity 方案類型
+    /// - Returns: 對應的顏色
+    private func antigravityPlanBadgeColor(for plan: AntigravityPlan) -> Color {
+        switch plan {
+        case .free: .gray
+        case .pro: .blue
+        }
+    }
+
+    // MARK: 用量摘要
+
+    /// Antigravity 用量摘要視圖，顯示各模型的配額進度。
+    /// - Parameter summary: Antigravity 用量摘要資料
+    @ViewBuilder
+    private func antigravityUsageSummaryView(summary: AntigravityUsageSummary) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if summary.hasUsageData {
+                ForEach(summary.modelUsages) { modelUsage in
+                    antigravityProgressRow(
+                        label: modelUsage.displayName,
+                        usedPercent: modelUsage.usedPercent,
+                        countdown: modelUsage.resetAt?.countdownString
+                    )
+                }
+            } else {
+                Text("No model usage data available.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(12)
+    }
+
+    /// Antigravity 用量進度列，顯示標籤、百分比與重設倒數。
+    /// - Parameters:
+    ///   - label: 模型的顯示名稱
+    ///   - usedPercent: 使用百分比（0–100）
+    ///   - countdown: 重設倒數文字，若無則隱藏
+    @ViewBuilder
+    private func antigravityProgressRow(label: String, usedPercent: Int, countdown: String?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(label)

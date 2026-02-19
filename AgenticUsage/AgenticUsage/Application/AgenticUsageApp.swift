@@ -26,6 +26,10 @@ struct AgenticUsageApp: App {
         $0.notificationClient = .live
         $0.claudeAPIClient = .live(clientID: bundleString("ClaudeClientID"))
         $0.codexAPIClient = .live(clientID: bundleString("CodexClientID"))
+        $0.antigravityAPIClient = .live(
+            clientID: bundleString("AntigravityClientID"),
+            clientSecret: bundleString("AntigravityClientSecret")
+        )
     }
 
     var body: some Scene {

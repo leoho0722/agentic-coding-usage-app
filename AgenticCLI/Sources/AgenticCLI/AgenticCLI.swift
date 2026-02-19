@@ -11,8 +11,8 @@ struct AgenticCLI: AsyncParsableCommand {
     /// CLI 指令的組態設定，包含指令名稱、說明、版本號與子指令。
     static let configuration = CommandConfiguration(
         commandName: "agentic",
-        abstract: "Monitor your AI coding assistant usage (GitHub Copilot, Claude Code, and more).",
-        version: "1.6.5",
+        abstract: "Monitor your AI coding assistant usage (GitHub Copilot, Claude Code, Google Antigravity, and more).",
+        version: "1.7.0",
         subcommands: [LoginCommand.self, UsageCommand.self],
         defaultSubcommand: UsageCommand.self,
     )

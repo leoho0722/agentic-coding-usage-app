@@ -50,19 +50,33 @@ struct MenuBarFeature {
         var claudeErrorMessage: String?
         
         // MARK: Codex
-        
+
         /// Codex 的連線狀態
         var codexConnectionState: CodexConnectionState = .notDetected
-        
+
         /// Codex 用量摘要
         var codexUsageSummary: CodexUsageSummary?
-        
+
         /// Codex 用量是否正在載入
         var isCodexLoading: Bool = false
-        
+
         /// Codex 相關的錯誤訊息
         var codexErrorMessage: String?
-        
+
+        // MARK: Antigravity
+
+        /// Antigravity 的連線狀態
+        var antigravityConnectionState: AntigravityConnectionState = .notDetected
+
+        /// Antigravity 用量摘要
+        var antigravityUsageSummary: AntigravityUsageSummary?
+
+        /// Antigravity 用量是否正在載入
+        var isAntigravityLoading: Bool = false
+
+        /// Antigravity 相關的錯誤訊息
+        var antigravityErrorMessage: String?
+
         /// 目前展開的工具卡片（手風琴），預設為 Copilot
         var expandedTool: ToolKind? = .copilot
     }
@@ -108,12 +122,22 @@ struct MenuBarFeature {
     
     /// Codex 的連線狀態列舉。
     enum CodexConnectionState: Equatable, Sendable {
-        
+
         /// 未偵測到本地憑證
         case notDetected
-        
+
         /// 已連線，附帶方案類型
         case connected(plan: CodexPlan?)
+    }
+
+    /// Antigravity 的連線狀態列舉。
+    enum AntigravityConnectionState: Equatable, Sendable {
+
+        /// 未偵測到本地憑證
+        case notDetected
+
+        /// 已連線，附帶方案類型
+        case connected(plan: AntigravityPlan?)
     }
     
     // MARK: - Action
@@ -199,7 +223,24 @@ struct MenuBarFeature {
         
         /// 檢查 Codex 用量是否達到通知門檻
         case checkCodexUsageThresholds
-        
+
+        // MARK: Antigravity
+
+        /// 偵測本機是否存在 Antigravity 憑證
+        case detectAntigravityCredentials
+
+        /// 手動重新擷取 Antigravity 用量
+        case fetchAntigravityUsage
+
+        /// Antigravity 用量回應成功
+        case antigravityUsageResponse(AntigravityUsageSummary)
+
+        /// Antigravity 用量擷取失敗
+        case antigravityUsageFailed(String)
+
+        /// 檢查 Antigravity 用量是否達到通知門檻
+        case checkAntigravityUsageThresholds
+
         // MARK: UI
         
         /// 切換指定工具卡片的展開/收合狀態
@@ -219,7 +260,10 @@ struct MenuBarFeature {
         
         /// 關閉 Codex 錯誤訊息
         case dismissCodexError
-        
+
+        /// 關閉 Antigravity 錯誤訊息
+        case dismissAntigravityError
+
         /// 結束應用程式
         case quitApp
     }
@@ -264,6 +308,7 @@ struct MenuBarFeature {
                     .send(.checkExistingAuth),
                     .send(.detectClaudeCredentials),
                     .send(.detectCodexCredentials),
+                    .send(.detectAntigravityCredentials),
                     .send(.requestNotificationAuthorization)
                 )
                 
@@ -691,12 +736,101 @@ struct MenuBarFeature {
                         }
                     }
                 } catch: { _, _ in }
-                
+
+                // MARK: - Antigravity
+
+            case .detectAntigravityCredentials:
+                state.isAntigravityLoading = true
+                state.antigravityErrorMessage = nil
+                return .run { send in
+                    @Dependency(\.antigravityAPIClient) var antigravityClient
+                    guard let credentials = try antigravityClient.loadCredentials() else {
+                        await send(.antigravityUsageFailed("notDetected"))
+                        return
+                    }
+                    let refreshed = try await antigravityClient.refreshTokenIfNeeded(credentials)
+                    let response = try await antigravityClient.fetchUsage(refreshed.accessToken)
+                    let summary = AntigravityUsageSummary(plan: nil, response: response)
+                    await send(.antigravityUsageResponse(summary))
+                } catch: { error, send in
+                    // 收到 401 時，嘗試強制重新整理權杖後重試
+                    if let apiError = error as? AntigravityAPIError,
+                       case let .httpError(statusCode, _) = apiError,
+                       statusCode == 401 {
+                        await send(.fetchAntigravityUsage)
+                    } else {
+                        await send(.antigravityUsageFailed(error.localizedDescription))
+                    }
+                }
+
+            case .fetchAntigravityUsage:
+                state.isAntigravityLoading = true
+                state.antigravityErrorMessage = nil
+                return .run { send in
+                    @Dependency(\.antigravityAPIClient) var antigravityClient
+                    guard let credentials = try antigravityClient.loadCredentials() else {
+                        await send(.antigravityUsageFailed("notDetected"))
+                        return
+                    }
+                    let refreshed = try await antigravityClient.refreshTokenIfNeeded(credentials)
+                    let response = try await antigravityClient.fetchUsage(refreshed.accessToken)
+                    let summary = AntigravityUsageSummary(plan: nil, response: response)
+                    await send(.antigravityUsageResponse(summary))
+                } catch: { error, send in
+                    await send(.antigravityUsageFailed(error.localizedDescription))
+                }
+
+            case let .antigravityUsageResponse(summary):
+                state.isAntigravityLoading = false
+                state.antigravityConnectionState = .connected(plan: summary.plan)
+                state.antigravityUsageSummary = summary
+                return .send(.checkAntigravityUsageThresholds)
+
+            case let .antigravityUsageFailed(message):
+                state.isAntigravityLoading = false
+
+                if message == "notDetected" {
+                    state.antigravityConnectionState = .notDetected
+                    state.antigravityErrorMessage = nil
+                } else {
+                    state.antigravityErrorMessage = message
+                }
+                return .none
+
+            case .checkAntigravityUsageThresholds:
+                guard let summary = state.antigravityUsageSummary else { return .none }
+                return .run { _ in
+                    @Dependency(\.notificationClient) var notificationClient
+
+                    // 逐模型檢查門檻
+                    for modelUsage in summary.modelUsages {
+                        let pct = modelUsage.usedPercent
+                        let resetCycle: String
+                        if let resetAt = modelUsage.resetAt {
+                            resetCycle = String(Int(resetAt.timeIntervalSince1970))
+                        } else {
+                            resetCycle = "unknown"
+                        }
+                        let thresholds = UsageThreshold.reached(by: pct)
+                        for threshold in thresholds {
+                            let toolWindow = "antigravity-\(modelUsage.modelID)"
+                            if !notificationClient.hasNotified(toolWindow, threshold.rawValue, resetCycle) {
+                                let title = threshold.title(for: "Antigravity \(modelUsage.displayName)")
+                                let body = threshold.body(usagePercent: pct)
+                                try await notificationClient.send(
+                                    "\(toolWindow)-\(threshold.rawValue)", title, body
+                                )
+                                notificationClient.markNotified(toolWindow, threshold.rawValue, resetCycle)
+                            }
+                        }
+                    }
+                } catch: { _, _ in }
+
             case let .usageFailed(message):
                 state.isLoading = false
                 state.errorMessage = message
                 return .none
-                
+
             case let .toggleToolExpansion(tool):
                 // 僅已啟用的工具才可展開
                 guard tool.isAvailable else {
@@ -742,7 +876,11 @@ struct MenuBarFeature {
             case .dismissCodexError:
                 state.codexErrorMessage = nil
                 return .none
-                
+
+            case .dismissAntigravityError:
+                state.antigravityErrorMessage = nil
+                return .none
+
             case .quitApp:
                 return .run { _ in
                     await MainActor.run {

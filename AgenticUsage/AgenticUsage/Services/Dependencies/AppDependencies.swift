@@ -150,10 +150,46 @@ extension CodexAPIClient: @retroactive TestDependencyKey {
 }
 
 extension DependencyValues {
-    
+
     /// Codex API 客戶端相依性
     public var codexAPIClient: CodexAPIClient {
         get { self[CodexAPIClient.self] }
         set { self[CodexAPIClient.self] = newValue }
+    }
+}
+
+// MARK: - AntigravityAPIClient 相依性
+
+/// 將 `AntigravityAPIClient` 註冊為 TCA 測試相依性，提供模擬的 Gemini 3 Pro 用量。
+extension AntigravityAPIClient: @retroactive TestDependencyKey {
+
+    /// 測試用的模擬實作
+    public static let testValue = AntigravityAPIClient(
+        loadCredentials: { nil },
+        refreshTokenIfNeeded: { current in current },
+        fetchUsage: { _ in
+            AntigravityUsageResponse(
+                models: [
+                    "models/gemini-3-pro": AntigravityModelInfo(
+                        model: "models/gemini-3-pro",
+                        displayName: "Gemini 3 Pro",
+                        isInternal: false,
+                        quotaInfo: AntigravityQuotaInfo(
+                            remainingFraction: 0.75,
+                            resetTime: ISO8601DateFormatter().string(from: Date().addingTimeInterval(86400))
+                        )
+                    ),
+                ]
+            )
+        }
+    )
+}
+
+extension DependencyValues {
+
+    /// Antigravity API 客戶端相依性
+    public var antigravityAPIClient: AntigravityAPIClient {
+        get { self[AntigravityAPIClient.self] }
+        set { self[AntigravityAPIClient.self] = newValue }
     }
 }

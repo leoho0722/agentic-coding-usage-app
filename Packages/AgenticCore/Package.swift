@@ -15,7 +15,8 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "AgenticCore"
+            name: "AgenticCore",
+            linkerSettings: [.linkedLibrary("sqlite3")]
         ),
         .testTarget(
             name: "AgenticCoreTests",
