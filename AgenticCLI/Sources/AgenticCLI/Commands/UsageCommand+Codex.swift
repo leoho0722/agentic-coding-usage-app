@@ -12,12 +12,8 @@ extension UsageCommand {
     ///
     /// - Throws: 當憑證重新整理或 API 請求失敗時拋出錯誤。
     func printCodexUsage() async throws {
-        guard let clientID = ProcessInfo.processInfo.environment["AGENTIC_CODEX_CLIENT_ID"],
-              !clientID.isEmpty else {
-            print("  [Codex] AGENTIC_CODEX_CLIENT_ID environment variable is required.")
-            print("  Set it to Codex's OAuth client ID for token refresh.")
-            return
-        }
+        let clientID = ProcessInfo.processInfo.environment["AGENTIC_CODEX_CLIENT_ID"]
+            ?? CodexConstants.defaultClientID
 
         let codexClient = CodexAPIClient.live(clientID: clientID)
 

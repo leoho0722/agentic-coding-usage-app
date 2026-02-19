@@ -12,19 +12,10 @@ extension UsageCommand {
     ///
     /// - Throws: 當憑證重新整理或 API 請求失敗時拋出錯誤。
     func printAntigravityUsage() async throws {
-        guard let clientID = ProcessInfo.processInfo.environment["AGENTIC_ANTIGRAVITY_CLIENT_ID"],
-              !clientID.isEmpty else {
-            print("  [Antigravity] AGENTIC_ANTIGRAVITY_CLIENT_ID environment variable is required.")
-            print("  Set it to Google's OAuth client ID for token refresh.")
-            return
-        }
-
-        guard let clientSecret = ProcessInfo.processInfo.environment["AGENTIC_ANTIGRAVITY_CLIENT_SECRET"],
-              !clientSecret.isEmpty else {
-            print("  [Antigravity] AGENTIC_ANTIGRAVITY_CLIENT_SECRET environment variable is required.")
-            print("  Set it to Google's OAuth client secret for token refresh.")
-            return
-        }
+        let clientID = ProcessInfo.processInfo.environment["AGENTIC_ANTIGRAVITY_CLIENT_ID"]
+            ?? AntigravityConstants.defaultClientID
+        let clientSecret = ProcessInfo.processInfo.environment["AGENTIC_ANTIGRAVITY_CLIENT_SECRET"]
+            ?? AntigravityConstants.defaultClientSecret
 
         let antigravityClient = AntigravityAPIClient.live(
             clientID: clientID,

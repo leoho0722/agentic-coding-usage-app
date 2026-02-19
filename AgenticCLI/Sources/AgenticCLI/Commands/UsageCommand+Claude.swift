@@ -12,12 +12,8 @@ extension UsageCommand {
     ///
     /// - Throws: 當憑證重新整理或 API 請求失敗時拋出錯誤。
     func printClaudeUsage() async throws {
-        guard let clientID = ProcessInfo.processInfo.environment["AGENTIC_CLAUDE_CLIENT_ID"],
-              !clientID.isEmpty else {
-            print("  [Claude Code] AGENTIC_CLAUDE_CLIENT_ID environment variable is required.")
-            print("  Set it to Claude Code's OAuth client ID for token refresh.")
-            return
-        }
+        let clientID = ProcessInfo.processInfo.environment["AGENTIC_CLAUDE_CLIENT_ID"]
+            ?? ClaudeConstants.defaultClientID
 
         let claudeClient = ClaudeAPIClient.live(clientID: clientID)
 

@@ -1,5 +1,17 @@
 import Foundation
 
+/// 將 base64 編碼的字串解碼為明文。
+///
+/// - Parameter encoded: base64 編碼的字串。
+/// - Returns: 解碼後的明文字串。
+func decodeBase64(_ encoded: String) -> String {
+    guard let data = Data(base64Encoded: encoded),
+          let decoded = String(data: data, encoding: .utf8) else {
+        fatalError("Invalid base64 encoded string: \(encoded)")
+    }
+    return decoded
+}
+
 /// 從 API 錯誤回應 data 中擷取人類可讀的訊息。
 ///
 /// 依序嘗試下列 JSON 格式：

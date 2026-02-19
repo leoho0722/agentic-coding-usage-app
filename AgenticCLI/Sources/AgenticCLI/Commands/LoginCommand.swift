@@ -31,15 +31,10 @@ struct LoginCommand: AsyncParsableCommand {
     ///
     /// - Throws: 當 Client ID 未提供或 OAuth 流程失敗時拋出錯誤。
     func run() async throws {
-        // 優先使用命令列參數，若未提供則嘗試從環境變數取得
-        let clientID = self.clientID ?? ProcessInfo.processInfo.environment["AGENTIC_GITHUB_CLIENT_ID"]
-
-        guard let clientID, !clientID.isEmpty else {
-            print("Error: GitHub OAuth client ID is required.")
-            print("Provide it via --client-id or set the AGENTIC_GITHUB_CLIENT_ID environment variable.")
-            print("Register an OAuth App at: https://github.com/settings/developers")
-            throw ExitCode.failure
-        }
+        // 優先使用命令列參數，其次環境變數，最後使用預設值
+        let clientID = self.clientID
+            ?? ProcessInfo.processInfo.environment["AGENTIC_GITHUB_CLIENT_ID"]
+            ?? GitHubConstants.defaultClientID
 
         let oAuth = OAuthService.live
         let keychain = KeychainService.live

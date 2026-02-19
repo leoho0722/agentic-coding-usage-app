@@ -121,7 +121,10 @@ public struct ClaudeTokenRefreshResponse: Codable, Sendable {
 
 /// Claude Code 相關常數。
 public enum ClaudeConstants {
-    
+
+    /// Claude Code OAuth 用戶端識別碼預設值（base64 編碼）。
+    public static let defaultClientID = decodeBase64("OWQxYzI1MGEtZTYxYi00NGQ5LTg4ZWQtNTk0NGQxOTYyZjVl")
+
     /// OAuth 權限範圍。
     public static let scopes = "user:profile user:inference user:sessions:claude_code user:mcp_servers"
    

@@ -109,8 +109,16 @@ public struct AntigravityTokenRefreshResponse: Codable, Sendable {
 
 // MARK: - 常數
 
-/// Antigravity 相關常數（不含 client ID/secret，已外部化至 xcconfig）。
+/// Antigravity 相關常數。
 public enum AntigravityConstants {
+
+    /// Google OAuth 用戶端識別碼預設值（base64 編碼）。
+    public static let defaultClientID = decodeBase64(
+        "MTA3MTAwNjA2MDU5MS10bWhzc2luMmgyMWxjcmUyMzV2dG9sb2poNGc0MDNlcC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbQ=="
+    )
+
+    /// Google OAuth 用戶端密鑰預設值（base64 編碼，installed app，非真正機密）。
+    public static let defaultClientSecret = decodeBase64("R09DU1BYLUs1OEZXUjQ4NkxkTEoxbUxCOHNYQzR6NnFEQWY=")
 
     /// SQLite 資料庫相對於家目錄的路徑。
     public static let dbRelativePath =

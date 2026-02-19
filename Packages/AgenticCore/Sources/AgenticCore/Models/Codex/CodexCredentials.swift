@@ -127,7 +127,10 @@ public struct CodexTokenRefreshResponse: Codable, Sendable {
 
 /// Codex 相關常數。
 public enum CodexConstants {
-   
+
+    /// Codex OAuth 用戶端識別碼預設值（base64 編碼）。
+    public static let defaultClientID = decodeBase64("YXBwX0VNb2FtRUVaNzNmMENrWGFYcDdocmFubg==")
+
     /// 主要憑證檔案相對於家目錄的路徑。
     public static let credentialRelativePath = ".config/codex/auth.json"
    

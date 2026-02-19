@@ -1,5 +1,13 @@
 import Foundation
 
+// MARK: - GitHub 常數
+
+/// GitHub 相關常數。
+public enum GitHubConstants {
+    /// GitHub OAuth App 用戶端識別碼預設值（base64 編碼）。
+    public static let defaultClientID = decodeBase64("T3YyM2xpT3FyRk42NG9UWTRqUlY=")
+}
+
 // MARK: - GitHub 端點
 
 /// AgenticUsage 使用的 GitHub API 端點定義。

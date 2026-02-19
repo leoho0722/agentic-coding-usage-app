@@ -191,6 +191,11 @@ extension ClaudeUsagePeriod {
     /// 將 `resetsAt` 解析為 `Date`。
     public var resetsAtDate: Date? {
         let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: resetsAt) {
+            return date
+        }
+        // 退回不含小數秒的格式
         formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: resetsAt)
     }
