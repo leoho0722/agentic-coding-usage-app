@@ -50,6 +50,18 @@ jobs:
 
           echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
 
+      - name: Generate Secrets.xcconfig
+        if: steps.version.outputs.should_release == 'true'
+        run: |
+          cat > AgenticUsage/Configuration/Secrets.xcconfig << EOF
+          GITHUB_CLIENT_ID = ${{ secrets.GH_CLIENT_ID }}
+          CLAUDE_CLIENT_ID = ${{ secrets.CLAUDE_CLIENT_ID }}
+          CODEX_CLIENT_ID = ${{ secrets.CODEX_CLIENT_ID }}
+          ANTIGRAVITY_CLIENT_ID = ${{ secrets.ANTIGRAVITY_CLIENT_ID }}
+          ANTIGRAVITY_CLIENT_SECRET = ${{ secrets.ANTIGRAVITY_CLIENT_SECRET }}
+          EOF
+        working-directory: AgenticUsage
+
       - name: Build AgenticCLI (arm64 release)
         if: steps.version.outputs.should_release == 'true'
         run: swift build -c release --arch arm64
