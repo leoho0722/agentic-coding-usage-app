@@ -1,7 +1,10 @@
 name: CD
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - RELEASE_VERSION
 
 jobs:
   release:
@@ -16,7 +19,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Read version from RELEASE_VERSION file
+      - name: Read and validate version from RELEASE_VERSION file
         id: version
         run: |
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
@@ -34,13 +37,26 @@ jobs:
           fi
 
           NEW_TAG="v${VERSION}"
+
+          # Compare new version against latest tag using sort -V; skip if not newer
+          LATEST_VERSION="${LATEST_TAG#v}"
+          HIGHER=$(printf '%s\n%s' "$LATEST_VERSION" "$VERSION" | sort -V | tail -n1)
+          if [ "$HIGHER" != "$VERSION" ] || [ "$VERSION" = "$LATEST_VERSION" ]; then
+            echo "RELEASE_VERSION ($VERSION) is not greater than latest tag ($LATEST_TAG). Skipping release."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
           echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Build AgenticCLI (arm64 release)
+        if: steps.version.outputs.should_release == 'true'
         run: swift build -c release --arch arm64
         working-directory: AgenticCLI
 
       - name: Zip AgenticCLI binary
+        if: steps.version.outputs.should_release == 'true'
         run: |
           ZIP_NAME="AgenticCLI-${{ steps.version.outputs.new_tag }}-arm64.zip"
           BIN_PATH=$(cd AgenticCLI && swift build -c release --arch arm64 --show-bin-path)
@@ -49,6 +65,7 @@ jobs:
           echo "cli_zip=$ZIP_NAME" >> "$GITHUB_ENV"
 
       - name: Archive AgenticUsage app
+        if: steps.version.outputs.should_release == 'true'
         run: |
           xcodebuild archive \
             -project AgenticUsage.xcodeproj \
@@ -62,6 +79,7 @@ jobs:
         working-directory: AgenticUsage
 
       - name: Zip AgenticUsage app
+        if: steps.version.outputs.should_release == 'true'
         run: |
           ZIP_NAME="AgenticUsage-${{ steps.version.outputs.new_tag }}.zip"
           cp -r /tmp/AgenticUsage.xcarchive/Products/Applications/AgenticUsage.app .
@@ -69,6 +87,7 @@ jobs:
           echo "app_zip=$ZIP_NAME" >> "$GITHUB_ENV"
 
       - name: Create GitHub Release
+        if: steps.version.outputs.should_release == 'true'
         run: |
           gh release create "${{ steps.version.outputs.new_tag }}" \
             --title "Release ${{ steps.version.outputs.new_tag }}" \
