@@ -80,7 +80,7 @@ struct UpdateCommand: AsyncParsableCommand {
         do {
             try service.installCLI(
                 from: extractedDir,
-                binaryName: "AgenticCLI",
+                binaryName: "agentic",
                 to: currentBinaryPath
             )
         } catch {

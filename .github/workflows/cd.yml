@@ -85,8 +85,8 @@ jobs:
         run: |
           ZIP_NAME="AgenticCLI-${{ steps.version.outputs.new_tag }}-arm64.zip"
           BIN_PATH=$(cd AgenticCLI && swift build -c release --arch arm64 --show-bin-path)
-          cp "$BIN_PATH/AgenticCLI" ./AgenticCLI-binary
-          zip "$ZIP_NAME" AgenticCLI-binary
+          cp "$BIN_PATH/AgenticCLI" ./agentic
+          zip "$ZIP_NAME" agentic
           echo "cli_zip=$ZIP_NAME" >> "$GITHUB_ENV"
 
       - name: Archive AgenticUsage app
