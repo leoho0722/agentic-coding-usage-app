@@ -1,0 +1,91 @@
+name: CD
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: "Version bump type (patch / minor / major)"
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: macos-15
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute next version tag
+        id: version
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+
+          VERSION="${LATEST_TAG#v}"
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+
+          case "${{ inputs.version_bump }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Build AgenticCLI (arm64 release)
+        run: swift build -c release --arch arm64
+        working-directory: AgenticCLI
+
+      - name: Zip AgenticCLI binary
+        run: |
+          ZIP_NAME="AgenticCLI-${{ steps.version.outputs.new_tag }}-arm64.zip"
+          BIN_PATH=$(cd AgenticCLI && swift build -c release --arch arm64 --show-bin-path)
+          cp "$BIN_PATH/AgenticCLI" ./AgenticCLI-binary
+          zip "$ZIP_NAME" AgenticCLI-binary
+          echo "cli_zip=$ZIP_NAME" >> "$GITHUB_ENV"
+
+      - name: Archive AgenticUsage app
+        run: |
+          xcodebuild archive \
+            -project AgenticUsage.xcodeproj \
+            -scheme AgenticUsage \
+            -configuration Release \
+            -archivePath /tmp/AgenticUsage.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            SKIP_INSTALL=NO
+        working-directory: AgenticUsage
+
+      - name: Zip AgenticUsage app
+        run: |
+          ZIP_NAME="AgenticUsage-${{ steps.version.outputs.new_tag }}.zip"
+          cp -r /tmp/AgenticUsage.xcarchive/Products/Applications/AgenticUsage.app .
+          zip -r "$ZIP_NAME" AgenticUsage.app
+          echo "app_zip=$ZIP_NAME" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release
+        run: |
+          gh release create "${{ steps.version.outputs.new_tag }}" \
+            --title "Release ${{ steps.version.outputs.new_tag }}" \
+            --generate-notes \
+            --notes-start-tag "${{ steps.version.outputs.latest_tag }}" \
+            "${{ env.cli_zip }}" \
+            "${{ env.app_zip }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
