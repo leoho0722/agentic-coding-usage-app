@@ -558,11 +558,15 @@ struct MenuBarFeature {
                     )
                     await send(.claudeUsageResponse(summary))
                 } catch: { error, send in
-                    // Refresh token 過期（HTTP 400）時，視為未偵測到憑證，引導使用者重新登入
-                    if let apiError = error as? ClaudeAPIError,
-                       case let .refreshFailed(statusCode, _) = apiError,
-                       statusCode == 400 {
-                        await send(.claudeUsageFailed("notDetected"))
+                    if let apiError = error as? ClaudeAPIError {
+                        switch apiError {
+                        case .refreshFailed(let statusCode, _) where statusCode == 400:
+                            await send(.claudeUsageFailed("notDetected"))
+                        case .insufficientScope:
+                            await send(.claudeUsageFailed("notDetected"))
+                        default:
+                            await send(.claudeUsageFailed(error.localizedDescription))
+                        }
                     } else {
                         await send(.claudeUsageFailed(error.localizedDescription))
                     }
@@ -585,11 +589,15 @@ struct MenuBarFeature {
                     )
                     await send(.claudeUsageResponse(summary))
                 } catch: { error, send in
-                    // Refresh token 過期（HTTP 400）時，視為未偵測到憑證，引導使用者重新登入
-                    if let apiError = error as? ClaudeAPIError,
-                       case let .refreshFailed(statusCode, _) = apiError,
-                       statusCode == 400 {
-                        await send(.claudeUsageFailed("notDetected"))
+                    if let apiError = error as? ClaudeAPIError {
+                        switch apiError {
+                        case .refreshFailed(let statusCode, _) where statusCode == 400:
+                            await send(.claudeUsageFailed("notDetected"))
+                        case .insufficientScope:
+                            await send(.claudeUsageFailed("notDetected"))
+                        default:
+                            await send(.claudeUsageFailed(error.localizedDescription))
+                        }
                     } else {
                         await send(.claudeUsageFailed(error.localizedDescription))
                     }

@@ -43,6 +43,9 @@ public enum ClaudeAPIError: LocalizedError, Sendable {
     /// 無可用的重新整理權杖。
     case noRefreshToken
     
+    /// OAuth token 缺少必要的 scope。
+    case insufficientScope(String)
+
     /// HTTP 錯誤，附帶狀態碼與訊息。
     case httpError(statusCode: Int, message: String)
     
@@ -60,10 +63,18 @@ public enum ClaudeAPIError: LocalizedError, Sendable {
         return false
     }
 
+    /// 是否為 scope 不足導致的 HTTP 403 錯誤。
+    public var isInsufficientScope: Bool {
+        if case .insufficientScope = self { return true }
+        return false
+    }
+
     public var errorDescription: String? {
         switch self {
         case .credentialsNotFound:
             "Claude Code credentials not found. Please log in via terminal: claude login"
+        case let .insufficientScope(detail):
+            "Claude 權限不足，請在終端機執行 `claude login` 重新登入。(\(detail))"
         case let .refreshFailed(statusCode, message):
             "Token refresh failed (\(statusCode)): \(message)"
         case .noRefreshToken:
@@ -215,7 +226,16 @@ extension ClaudeAPIClient {
                         message: "Unauthorized — token may have expired"
                     )
                 }
-                
+
+                // 處理 403 -- scope 不足，需要重新登入
+                guard httpResponse.statusCode != 403 else {
+                    let message = extractErrorMessage(from: data)
+                    if message.contains("scope") {
+                        throw ClaudeAPIError.insufficientScope(message)
+                    }
+                    throw ClaudeAPIError.httpError(statusCode: 403, message: message)
+                }
+
                 guard (200...299).contains(httpResponse.statusCode) else {
                     throw ClaudeAPIError.httpError(
                         statusCode: httpResponse.statusCode,

@@ -30,7 +30,13 @@ extension UsageCommand {
             print("  [Claude Code] Refresh token expired. Please re-login via terminal: claude login")
             return
         }
-        let response = try await claudeClient.fetchUsage(refreshed.accessToken)
+        let response: ClaudeUsageResponse
+        do {
+            response = try await claudeClient.fetchUsage(refreshed.accessToken)
+        } catch let error as ClaudeAPIError where error.isInsufficientScope {
+            print("  [Claude Code] 權限不足，請執行 `claude login` 重新登入。")
+            return
+        }
         let summary = ClaudeUsageSummary(
             plan: ClaudePlan.fromAPIString(refreshed.subscriptionType),
             response: response
