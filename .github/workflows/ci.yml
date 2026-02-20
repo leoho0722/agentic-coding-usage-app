@@ -43,6 +43,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Generate Secrets.xcconfig from template
+        run: cp AgenticUsage/Configuration/Secrets.xcconfig.template AgenticUsage/Configuration/Secrets.xcconfig
+        working-directory: AgenticUsage
+
       - name: Run AgenticUsage unit tests
         run: |
           xcodebuild test \
