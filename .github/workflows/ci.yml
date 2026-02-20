@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+
+permissions:
+  contents: read
+
+jobs:
+  test-agenticcore:
+    name: Test AgenticCore
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run AgenticCore unit tests
+        run: swift test
+        working-directory: Packages/AgenticCore
+
+  build-agenticcli:
+    name: Build AgenticCLI
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build AgenticCLI
+        run: swift build
+        working-directory: AgenticCLI
+
+  test-agenticusage:
+    name: Test AgenticUsage
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run AgenticUsage unit tests
+        run: |
+          xcodebuild test \
+            -project AgenticUsage.xcodeproj \
+            -scheme AgenticUsage \
+            -destination 'platform=macOS' \
+            -skip-testing:AgenticUsageUITests \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+        working-directory: AgenticUsage
