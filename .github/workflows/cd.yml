@@ -2,16 +2,6 @@ name: CD
 
 on:
   workflow_dispatch:
-    inputs:
-      version_bump:
-        description: "Version bump type (patch / minor / major)"
-        required: true
-        default: patch
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
 
 jobs:
   release:
@@ -26,26 +16,25 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Compute next version tag
+      - name: Read version from RELEASE_VERSION file
         id: version
         run: |
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "latest_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
 
-          VERSION="${LATEST_TAG#v}"
-          MAJOR=$(echo "$VERSION" | cut -d. -f1)
-          MINOR=$(echo "$VERSION" | cut -d. -f2)
-          PATCH=$(echo "$VERSION" | cut -d. -f3)
+          if [ ! -f RELEASE_VERSION ]; then
+            echo "Error: RELEASE_VERSION file not found in repo root." >&2
+            exit 1
+          fi
 
-          case "${{ inputs.version_bump }}" in
-            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
-            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
-            patch) PATCH=$((PATCH + 1)) ;;
-          esac
+          VERSION=$(cat RELEASE_VERSION | tr -d '[:space:]')
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Error: RELEASE_VERSION must contain a valid semver (e.g. 1.9.0), got: '$VERSION'" >&2
+            exit 1
+          fi
 
-          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          NEW_TAG="v${VERSION}"
           echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
-          echo "version=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_OUTPUT"
 
       - name: Build AgenticCLI (arm64 release)
         run: swift build -c release --arch arm64
