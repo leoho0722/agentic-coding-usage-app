@@ -20,19 +20,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check if RELEASE_VERSION changed
-        id: check
-        run: |
-          CHANGED=$(git diff --name-only HEAD~1 HEAD -- RELEASE_VERSION || true)
-          if [ -z "$CHANGED" ]; then
-            echo "RELEASE_VERSION not changed. Skipping release."
-            echo "should_continue=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_continue=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Read and validate version from RELEASE_VERSION file
-        if: steps.check.outputs.should_continue == 'true'
         id: version
         run: |
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
@@ -64,7 +52,7 @@ jobs:
           echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Generate Secrets.xcconfig
-        if: steps.check.outputs.should_continue == 'true' && steps.version.outputs.should_release == 'true'
+        if: steps.version.outputs.should_release == 'true'
         run: |
           cat > AgenticUsage/Configuration/Secrets.xcconfig << EOF
           GITHUB_CLIENT_ID = ${{ secrets.GH_CLIENT_ID }}
@@ -76,12 +64,12 @@ jobs:
         working-directory: AgenticUsage
 
       - name: Build AgenticCLI (arm64 release)
-        if: steps.check.outputs.should_continue == 'true' && steps.version.outputs.should_release == 'true'
+        if: steps.version.outputs.should_release == 'true'
         run: swift build -c release --arch arm64
         working-directory: AgenticCLI
 
       - name: Zip AgenticCLI binary
-        if: steps.check.outputs.should_continue == 'true' && steps.version.outputs.should_release == 'true'
+        if: steps.version.outputs.should_release == 'true'
         run: |
           ZIP_NAME="AgenticCLI-${{ steps.version.outputs.new_tag }}-arm64.zip"
           BIN_PATH=$(cd AgenticCLI && swift build -c release --arch arm64 --show-bin-path)
@@ -90,13 +78,14 @@ jobs:
           echo "cli_zip=$ZIP_NAME" >> "$GITHUB_ENV"
 
       - name: Archive AgenticUsage app
-        if: steps.check.outputs.should_continue == 'true' && steps.version.outputs.should_release == 'true'
+        if: steps.version.outputs.should_release == 'true'
         run: |
           xcodebuild archive \
             -project AgenticUsage.xcodeproj \
             -scheme AgenticUsage \
             -configuration Release \
             -archivePath /tmp/AgenticUsage.xcarchive \
+            -skipMacroValidation \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
@@ -104,7 +93,7 @@ jobs:
         working-directory: AgenticUsage
 
       - name: Zip AgenticUsage app
-        if: steps.check.outputs.should_continue == 'true' && steps.version.outputs.should_release == 'true'
+        if: steps.version.outputs.should_release == 'true'
         run: |
           ZIP_NAME="AgenticUsage-${{ steps.version.outputs.new_tag }}.zip"
           cp -r /tmp/AgenticUsage.xcarchive/Products/Applications/AgenticUsage.app .
@@ -112,7 +101,7 @@ jobs:
           echo "app_zip=$ZIP_NAME" >> "$GITHUB_ENV"
 
       - name: Create GitHub Release
-        if: steps.check.outputs.should_continue == 'true' && steps.version.outputs.should_release == 'true'
+        if: steps.version.outputs.should_release == 'true'
         run: |
           gh release create "${{ steps.version.outputs.new_tag }}" \
             --title "Release ${{ steps.version.outputs.new_tag }}" \
