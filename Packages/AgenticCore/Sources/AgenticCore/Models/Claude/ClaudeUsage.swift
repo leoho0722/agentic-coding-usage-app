@@ -41,19 +41,22 @@ public struct ClaudeUsageResponse: Codable, Sendable, Equatable {
 
 /// 單一使用率視窗（例如工作階段 5 小時、每週 7 天）。
 public struct ClaudeUsagePeriod: Codable, Sendable, Equatable {
-    
-    /// 使用率百分比，整數 0 至 100。
-    public let utilization: Int
-    
-    /// 此視窗重置的 ISO 8601 時間戳記。
-    public let resetsAt: String
-    
+
+    /// 使用率百分比，0 至 100（API 可能回傳小數，例如 78.0、96.4）。
+    public let utilization: Double
+
+    /// 此視窗重置的 ISO 8601 時間戳記，可能為 `null`。
+    public let resetsAt: String?
+
+    /// 提供整數百分比給 UI 使用。
+    public var utilizationPercent: Int { Int(utilization) }
+
     enum CodingKeys: String, CodingKey {
         case utilization
         case resetsAt = "resets_at"
     }
-    
-    public init(utilization: Int, resetsAt: String) {
+
+    public init(utilization: Double, resetsAt: String?) {
         self.utilization = utilization
         self.resetsAt = resetsAt
     }
@@ -61,26 +64,26 @@ public struct ClaudeUsagePeriod: Codable, Sendable, Equatable {
 
 /// 額外用量資訊（超出方案內含配額後計費的部分）。
 public struct ClaudeExtraUsage: Codable, Sendable, Equatable {
-    
+
     /// 此帳號是否啟用額外用量。
     public let isEnabled: Bool
-    
+
     /// 已使用的額度（單位：美分，除以 100 為美元）。
     public let usedCredits: Int?
-    
+
     /// 每月額度上限（單位：美分）。
     public let monthlyLimit: Int?
-    
+
     /// 幣別代碼（例如 `"USD"`）。
     public let currency: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case isEnabled = "is_enabled"
         case usedCredits = "used_credits"
         case monthlyLimit = "monthly_limit"
         case currency
     }
-    
+
     public init(
         isEnabled: Bool,
         usedCredits: Int? = nil,
@@ -91,6 +94,14 @@ public struct ClaudeExtraUsage: Codable, Sendable, Equatable {
         self.usedCredits = usedCredits
         self.monthlyLimit = monthlyLimit
         self.currency = currency
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        self.usedCredits = try container.decodeIfPresent(Int.self, forKey: .usedCredits)
+        self.monthlyLimit = try container.decodeIfPresent(Int.self, forKey: .monthlyLimit)
+        self.currency = try container.decodeIfPresent(String.self, forKey: .currency)
     }
 }
 
@@ -143,13 +154,13 @@ public struct ClaudeUsageSummary: Equatable, Sendable {
     ) {
         self.plan = plan
         
-        self.sessionUtilization = response.fiveHour?.utilization
+        self.sessionUtilization = response.fiveHour?.utilizationPercent
         self.sessionResetsAt = response.fiveHour?.resetsAt
-        
-        self.weeklyUtilization = response.sevenDay?.utilization
+
+        self.weeklyUtilization = response.sevenDay?.utilizationPercent
         self.weeklyResetsAt = response.sevenDay?.resetsAt
-        
-        self.opusUtilization = response.sevenDayOpus?.utilization
+
+        self.opusUtilization = response.sevenDayOpus?.utilizationPercent
         self.opusResetsAt = response.sevenDayOpus?.resetsAt
         
         if let extra = response.extraUsage {
@@ -188,8 +199,9 @@ public struct ClaudeUsageSummary: Equatable, Sendable {
 
 extension ClaudeUsagePeriod {
     
-    /// 將 `resetsAt` 解析為 `Date`。
+    /// 將 `resetsAt` 解析為 `Date`。若 `resetsAt` 為 `nil` 則回傳 `nil`。
     public var resetsAtDate: Date? {
+        guard let resetsAt else { return nil }
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let date = formatter.date(from: resetsAt) {

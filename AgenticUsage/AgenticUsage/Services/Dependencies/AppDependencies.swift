@@ -98,8 +98,8 @@ extension ClaudeAPIClient: @retroactive TestDependencyKey {
         refreshTokenIfNeeded: { current in current },
         fetchUsage: { _ in
             ClaudeUsageResponse(
-                fiveHour: ClaudeUsagePeriod(utilization: 25, resetsAt: "2026-02-16T20:00:00Z"),
-                sevenDay: ClaudeUsagePeriod(utilization: 40, resetsAt: "2026-02-20T00:00:00Z"),
+                fiveHour: ClaudeUsagePeriod(utilization: 25.0, resetsAt: "2026-02-16T20:00:00Z"),
+                sevenDay: ClaudeUsagePeriod(utilization: 40.0, resetsAt: "2026-02-20T00:00:00Z"),
                 sevenDayOpus: nil,
                 extraUsage: nil
             )

@@ -63,7 +63,7 @@ extension UsageCommand {
         if let pct = summary.sessionUtilization {
             printProgressBar(label: "Session (5h)", percentage: pct, barWidth: barWidth)
             if let resetsAt = summary.sessionResetsAt {
-                let countdown = ClaudeUsagePeriod(utilization: pct, resetsAt: resetsAt).resetCountdown ?? "?"
+                let countdown = ClaudeUsagePeriod(utilization: Double(pct), resetsAt: resetsAt).resetCountdown ?? "?"
                 print("               Resets in: \(countdown)")
             }
         }
@@ -72,7 +72,7 @@ extension UsageCommand {
         if let pct = summary.weeklyUtilization {
             printProgressBar(label: "Weekly  (7d)", percentage: pct, barWidth: barWidth)
             if let resetsAt = summary.weeklyResetsAt {
-                let countdown = ClaudeUsagePeriod(utilization: pct, resetsAt: resetsAt).resetCountdown ?? "?"
+                let countdown = ClaudeUsagePeriod(utilization: Double(pct), resetsAt: resetsAt).resetCountdown ?? "?"
                 print("               Resets in: \(countdown)")
             }
         }
@@ -81,7 +81,7 @@ extension UsageCommand {
         if let pct = summary.opusUtilization {
             printProgressBar(label: "Opus    (7d)", percentage: pct, barWidth: barWidth)
             if let resetsAt = summary.opusResetsAt {
-                let countdown = ClaudeUsagePeriod(utilization: pct, resetsAt: resetsAt).resetCountdown ?? "?"
+                let countdown = ClaudeUsagePeriod(utilization: Double(pct), resetsAt: resetsAt).resetCountdown ?? "?"
                 print("               Resets in: \(countdown)")
             }
         }

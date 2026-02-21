@@ -810,7 +810,7 @@ extension MenuBarView {
                     label: "Session (5h)",
                     utilization: pct,
                     countdown: summary.sessionResetsAt.flatMap {
-                        ClaudeUsagePeriod(utilization: pct, resetsAt: $0).resetCountdown
+                        ClaudeUsagePeriod(utilization: Double(pct), resetsAt: $0).resetCountdown
                     }
                 )
             }
@@ -821,7 +821,7 @@ extension MenuBarView {
                     label: "Weekly (7d)",
                     utilization: pct,
                     countdown: summary.weeklyResetsAt.flatMap {
-                        ClaudeUsagePeriod(utilization: pct, resetsAt: $0).resetCountdown
+                        ClaudeUsagePeriod(utilization: Double(pct), resetsAt: $0).resetCountdown
                     }
                 )
             }
@@ -832,7 +832,7 @@ extension MenuBarView {
                     label: "Opus (7d)",
                     utilization: pct,
                     countdown: summary.opusResetsAt.flatMap {
-                        ClaudeUsagePeriod(utilization: pct, resetsAt: $0).resetCountdown
+                        ClaudeUsagePeriod(utilization: Double(pct), resetsAt: $0).resetCountdown
                     }
                 )
             }
