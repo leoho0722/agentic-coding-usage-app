@@ -23,7 +23,10 @@ jobs:
       - name: Read and validate version from RELEASE_VERSION file
         id: version
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          LATEST_TAG=$(git tag --sort=-v:refname | head -1)
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="v0.0.0"
+          fi
           echo "latest_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
 
           if [ ! -f RELEASE_VERSION ]; then
@@ -100,13 +103,29 @@ jobs:
           zip -r "$ZIP_NAME" AgenticUsage.app
           echo "app_zip=$ZIP_NAME" >> "$GITHUB_ENV"
 
+      - name: Create git tag
+        if: steps.version.outputs.should_release == 'true'
+        run: |
+          NEW_TAG="${{ steps.version.outputs.new_tag }}"
+          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+            echo "Tag $NEW_TAG already exists, skipping."
+          else
+            git tag "$NEW_TAG"
+            git push origin "$NEW_TAG"
+            echo "Created and pushed tag $NEW_TAG."
+          fi
+
       - name: Create GitHub Release
         if: steps.version.outputs.should_release == 'true'
         run: |
+          LATEST_TAG="${{ steps.version.outputs.latest_tag }}"
+          NOTES_ARGS=(--generate-notes)
+          if [ "$LATEST_TAG" != "v0.0.0" ]; then
+            NOTES_ARGS+=(--notes-start-tag "$LATEST_TAG")
+          fi
           gh release create "${{ steps.version.outputs.new_tag }}" \
             --title "Release ${{ steps.version.outputs.new_tag }}" \
-            --generate-notes \
-            --notes-start-tag "${{ steps.version.outputs.latest_tag }}" \
+            "${NOTES_ARGS[@]}" \
             "${{ env.cli_zip }}" \
             "${{ env.app_zip }}"
         env:
