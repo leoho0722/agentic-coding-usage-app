@@ -1,0 +1,24 @@
+name: Feedback
+description: Share your feedback to help improve AgenticUsage
+title: "[Feedback] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing your feedback! Please fill out the details below.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Feedback summary
+      description: What is your feedback?
+      placeholder: Tell us what you think.
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Additional details
+      description: Any context, examples, or suggestions?
+      placeholder: Add any extra information here.
+    validations:
+      required: false
