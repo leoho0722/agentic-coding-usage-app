@@ -14,6 +14,32 @@ body:
       placeholder: 請告訴我們你的想法。 (Tell us what you think.)
     validations:
       required: true
+  - type: dropdown
+    id: product
+    attributes:
+      label: 使用介面 (App or CLI)
+      description: 你是使用 App 還是 CLI？ (Are you using the App or CLI?)
+      options:
+        - App
+        - CLI
+    validations:
+      required: true
+  - type: input
+    id: app_cli_version
+    attributes:
+      label: App / CLI 版本 (App / CLI version)
+      description: 請填寫你目前使用的版本。 (Please provide the version you are using.)
+      placeholder: 例如：1.2.3 (e.g., 1.2.3)
+    validations:
+      required: true
+  - type: input
+    id: os_version
+    attributes:
+      label: 作業系統版本 (Operating system version)
+      description: 請填寫作業系統與版本。 (Please provide your operating system and version.)
+      placeholder: 例如：macOS 15.3 (e.g., macOS 15.3)
+    validations:
+      required: true
   - type: textarea
     id: details
     attributes:
