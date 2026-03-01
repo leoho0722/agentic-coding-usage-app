@@ -1,24 +1,24 @@
-name: Feedback
-description: Share your feedback to help improve AgenticUsage
-title: "[Feedback] "
+name: 回饋 (Feedback)
+description: 分享你的回饋以協助改進 AgenticUsage (Share your feedback to help improve AgenticUsage)
+title: "[回饋 (Feedback)] "
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for sharing your feedback! Please fill out the details below.
+        感謝分享你的回饋！請填寫以下資訊。 (Thanks for sharing your feedback! Please fill out the details below.)
   - type: textarea
     id: summary
     attributes:
-      label: Feedback summary
-      description: What is your feedback?
-      placeholder: Tell us what you think.
+      label: 回饋摘要 (Feedback summary)
+      description: 你的回饋是什麼？ (What is your feedback?)
+      placeholder: 請告訴我們你的想法。 (Tell us what you think.)
     validations:
       required: true
   - type: textarea
     id: details
     attributes:
-      label: Additional details
-      description: Any context, examples, or suggestions?
-      placeholder: Add any extra information here.
+      label: 補充資訊 (Additional details)
+      description: 是否有任何背景、範例或建議？ (Any context, examples, or suggestions?)
+      placeholder: 請在此補充其他資訊。 (Add any extra information here.)
     validations:
       required: false
