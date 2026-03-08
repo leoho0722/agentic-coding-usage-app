@@ -9,16 +9,16 @@ import Foundation
 /// - ``pro``：Pro 方案
 /// - ``max``：Max 方案（API 可能回傳 `"max"` 或 `"pro_plus"`）
 public enum ClaudePlan: String, Sendable, Equatable {
-
+    
     /// 免費方案。
     case free = "Free"
-
+    
     /// Pro 方案。
     case pro = "Pro"
-
+    
     /// Max 方案。
     case max = "Max"
-
+    
     /// 從 API 回傳的訂閱類型字串解析為 ``ClaudePlan``。
     ///
     /// 已知的 API 值對應：
@@ -39,7 +39,7 @@ public enum ClaudePlan: String, Sendable, Equatable {
         default: return nil
         }
     }
-
+    
     /// 適合作為標章顯示的簡短標籤文字。
     public var badgeLabel: String { rawValue }
 }

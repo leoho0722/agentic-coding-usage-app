@@ -21,6 +21,12 @@ public struct CodexAPIClient: Sendable {
         _ accountId: String?
     ) async throws -> (CodexUsageHeaders, CodexUsageResponse)
     
+    /// 以指定的閉包建立實例。
+    ///
+    /// - Parameters:
+    ///   - loadCredentials: 從設定檔或鑰匙圈載入 Codex OAuth 憑證。
+    ///   - refreshTokenIfNeeded: 若權杖已過期或即將過期，重新整理存取權杖。回傳更新後的憑證。
+    ///   - fetchUsage: 從 Codex API 取得用量資料。回傳標頭與 Body 回應。
     public init(
         loadCredentials: @escaping @Sendable () throws -> CodexOAuth?,
         refreshTokenIfNeeded: @escaping @Sendable (_ current: CodexOAuth) async throws -> CodexOAuth,
@@ -92,35 +98,29 @@ extension CodexAPIClient {
         CodexAPIClient(
             loadCredentials: {
                 var candidates: [CodexOAuth] = []
-
-                // 在 App Sandbox 中，FileManager.homeDirectoryForCurrentUser 回傳容器路徑，
-                // 需使用 getpwuid 取得真實家目錄，搭配 absolute-path entitlement 存取。
-                let homeDir: URL = if let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir {
-                    URL(fileURLWithPath: String(cString: dir))
-                } else {
-                    FileManager.default.homeDirectoryForCurrentUser
-                }
-
+                
+                let homeDir = FileManager.default.realHomeDirectory
+                
                 // 1. 嘗試主要路徑：~/.config/codex/auth.json
                 let primaryPath = homeDir.appendingPathComponent(CodexConstants.credentialRelativePath)
-                if let oauth = loadCredentialFile(at: primaryPath) {
+                if let oauth = Self.loadCredentialFile(at: primaryPath) {
                     candidates.append(oauth)
                 }
-
+                
                 // 2. 嘗試備用路徑：~/.codex/auth.json
                 let fallbackPath = homeDir.appendingPathComponent(CodexConstants.credentialFallbackPath)
-                if let oauth = loadCredentialFile(at: fallbackPath) {
+                if let oauth = Self.loadCredentialFile(at: fallbackPath) {
                     candidates.append(oauth)
                 }
-
+                
                 // 3. 嘗試 CODEX_HOME 環境變數
                 if let codexHome = ProcessInfo.processInfo.environment["CODEX_HOME"] {
                     let envPath = URL(fileURLWithPath: codexHome).appendingPathComponent("auth.json")
-                    if let oauth = loadCredentialFile(at: envPath) {
+                    if let oauth = Self.loadCredentialFile(at: envPath) {
                         candidates.append(oauth)
                     }
                 }
-
+                
                 // 4. macOS 鑰匙圈
                 let query: [String: Any] = [
                     kSecClass as String: kSecClassGenericPassword,
@@ -130,7 +130,7 @@ extension CodexAPIClient {
                 ]
                 var result: AnyObject?
                 let status = SecItemCopyMatching(query as CFDictionary, &result)
-
+                
                 if status == errSecSuccess,
                    let data = result as? Data,
                    let text = String(data: data, encoding: .utf8),
@@ -138,7 +138,7 @@ extension CodexAPIClient {
                    let oauth = file.toOAuth() {
                     candidates.append(oauth)
                 }
-
+                
                 // 從所有來源中選出最新的憑證（依 lastRefresh 排序）
                 return candidates.max {
                     ($0.lastRefresh ?? .distantPast) < ($1.lastRefresh ?? .distantPast)
@@ -153,37 +153,34 @@ extension CodexAPIClient {
                     throw CodexAPIError.noRefreshToken
                 }
                 
-                // Codex 使用 form-urlencoded POST（非 JSON）
-                var request = URLRequest(url: URL(string: CodexConstants.refreshURL)!)
-                request.httpMethod = "POST"
-                request.setValue(
-                    "application/x-www-form-urlencoded",
-                    forHTTPHeaderField: "Content-Type"
-                )
+                let request = RequestBuilder(urlString: CodexConstants.refreshURL)
+                    .method(.post)
+                    .formBody([
+                        "grant_type=refresh_token",
+                        "client_id=\(clientID)",
+                        "refresh_token=\(refreshToken)",
+                    ])
+                    .build()
                 
-                let bodyParams = [
-                    "grant_type=refresh_token",
-                    "client_id=\(clientID)",
-                    "refresh_token=\(refreshToken)",
-                ].joined(separator: "&")
-                request.httpBody = bodyParams.data(using: .utf8)
-                
-                let (data, response) = try await URLSession.shared.data(for: request)
-                
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    throw CodexAPIError.invalidResponse
-                }
-                guard (200...299).contains(httpResponse.statusCode) else {
-                    // 401 表示 refresh token 已被使用或過期，
-                    // 但 access token 可能仍然有效（例如剛重新登入後），
-                    // 回傳當前憑證讓後續 API 呼叫驗證。
+                let (httpResponse, data) = try await HTTPClient().fetchRaw(request) { httpResponse, responseData in
+                    // 401: 回傳 data 讓外層處理，跳過預設驗證
                     if httpResponse.statusCode == 401 {
-                        return current
+                        return responseData
                     }
-                    throw CodexAPIError.refreshFailed(
-                        statusCode: httpResponse.statusCode,
-                        message: extractErrorMessage(from: data)
-                    )
+                    // 其他非 2xx: 拋出 refreshFailed
+                    guard (200...299).contains(httpResponse.statusCode) else {
+                        throw CodexAPIError.refreshFailed(
+                            statusCode: httpResponse.statusCode,
+                            message: extractErrorMessage(from: responseData)
+                        )
+                    }
+                    return nil
+                }
+                
+                // 401 表示 refresh token 已被使用或過期，
+                // 但 access token 可能仍然有效，回傳當前憑證讓後續 API 呼叫驗證。
+                if httpResponse.statusCode == 401 {
+                    return current
                 }
                 
                 let refreshResponse = try JSONDecoder().decode(
@@ -199,39 +196,31 @@ extension CodexAPIClient {
                 )
                 
                 // 將憑證回寫至檔案（盡力而為；沙盒應用程式中可能靜默失敗）
-                writeBackCodexCredentials(updated)
+                Self.writeBackCredentials(updated)
                 
                 return updated
             },
             fetchUsage: { accessToken, accountId in
-                var request = URLRequest(url: URL(string: CodexConstants.usageURL)!)
-                request.httpMethod = "GET"
-                request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+                var builder = RequestBuilder(urlString: CodexConstants.usageURL)
+                    .method(.get)
+                    .bearerToken(accessToken)
                 
                 // 若有帳號 ID 則加入標頭
                 if let accountId, !accountId.isEmpty {
-                    request.setValue(accountId, forHTTPHeaderField: "ChatGPT-Account-Id")
+                    builder = builder.header("ChatGPT-Account-Id", accountId)
                 }
                 
-                let (data, response) = try await URLSession.shared.data(for: request)
+                let request = builder.build()
                 
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    throw CodexAPIError.invalidResponse
-                }
-                
-                // 處理 401 -- 權杖可能在重新整理檢查與實際請求之間過期
-                guard httpResponse.statusCode != 401 else {
-                    throw CodexAPIError.httpError(
-                        statusCode: 401,
-                        message: "Unauthorized — token may have expired"
-                    )
-                }
-                
-                guard (200...299).contains(httpResponse.statusCode) else {
-                    throw CodexAPIError.httpError(
-                        statusCode: httpResponse.statusCode,
-                        message: extractErrorMessage(from: data)
-                    )
+                let (httpResponse, data) = try await HTTPClient().fetchRaw(request) { httpResponse, responseData in
+                    // 401 直接拋出錯誤
+                    guard httpResponse.statusCode != 401 else {
+                        throw CodexAPIError.httpError(
+                            statusCode: 401,
+                            message: "Unauthorized — token may have expired"
+                        )
+                    }
+                    return nil
                 }
                 
                 // 解析標頭
@@ -255,65 +244,63 @@ extension CodexAPIClient {
 
 // MARK: - 私有輔助工具
 
-/// 從指定路徑載入並解析 Codex 憑證檔案。
-///
-/// - Parameter url: 憑證檔案的路徑。
-/// - Returns: 解析成功的 ``CodexOAuth``，失敗時回傳 `nil`。
-private func loadCredentialFile(at url: URL) -> CodexOAuth? {
-    guard let fileData = FileManager.default.contents(atPath: url.path),
-          let fileText = String(data: fileData, encoding: .utf8),
-          let file = CodexCredentialFile.parse(from: fileText),
-          let oauth = file.toOAuth() else {
-        return nil
-    }
-    return oauth
-}
+private extension CodexAPIClient {
 
-/// 將更新後的憑證回寫至主要 Codex 憑證檔案。
-///
-/// 盡力而為：在具有唯讀權限的沙盒應用程式中可能靜默失敗。
-///
-/// - Parameter oauth: 要回寫的 OAuth 憑證。
-private func writeBackCodexCredentials(_ oauth: CodexOAuth) {
-    let homeDir: URL = if let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir {
-        URL(fileURLWithPath: String(cString: dir))
-    } else {
-        FileManager.default.homeDirectoryForCurrentUser
+    /// 從指定路徑載入並解析 Codex 憑證檔案。
+    ///
+    /// - Parameter url: 憑證檔案的路徑。
+    /// - Returns: 解析成功的 ``CodexOAuth``，失敗時回傳 `nil`。
+    static func loadCredentialFile(at url: URL) -> CodexOAuth? {
+        guard let fileData = FileManager.default.contents(atPath: url.path),
+              let fileText = String(data: fileData, encoding: .utf8),
+              let file = CodexCredentialFile.parse(from: fileText),
+              let oauth = file.toOAuth() else {
+            return nil
+        }
+        return oauth
     }
-    let credentialPath = homeDir.appendingPathComponent(CodexConstants.credentialRelativePath)
-    
-    // 讀取既有檔案以保留其他欄位
-    var existingDict: [String: Any] = [:]
-    if let fileData = FileManager.default.contents(atPath: credentialPath.path),
-       let json = try? JSONSerialization.jsonObject(with: fileData) as? [String: Any] {
-        existingDict = json
-    }
-    
-    // 建構 tokens 子字典
-    var tokensDict: [String: Any] = [
-        "access_token": oauth.accessToken,
-    ]
-    if let refreshToken = oauth.refreshToken {
-        tokensDict["refresh_token"] = refreshToken
-    }
-    if let accountId = oauth.accountId {
-        tokensDict["account_id"] = accountId
-    }
-    
-    existingDict["tokens"] = tokensDict
-    
-    // 更新 last_refresh
-    if let lastRefresh = oauth.lastRefresh {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        existingDict["last_refresh"] = formatter.string(from: lastRefresh)
-    }
-    
-    // 回寫檔案
-    if let data = try? JSONSerialization.data(
-        withJSONObject: existingDict,
-        options: [.prettyPrinted, .sortedKeys]
-    ) {
-        try? data.write(to: credentialPath)
+
+    /// 將更新後的憑證回寫至主要 Codex 憑證檔案。
+    ///
+    /// 盡力而為：在具有唯讀權限的沙盒應用程式中可能靜默失敗。
+    ///
+    /// - Parameter oauth: 要回寫的 OAuth 憑證。
+    static func writeBackCredentials(_ oauth: CodexOAuth) {
+        let credentialPath = FileManager.default.realHomeDirectory.appendingPathComponent(CodexConstants.credentialRelativePath)
+
+        // 讀取既有檔案以保留其他欄位
+        var existingDict: [String: Any] = [:]
+        if let fileData = FileManager.default.contents(atPath: credentialPath.path),
+           let json = try? JSONSerialization.jsonObject(with: fileData) as? [String: Any] {
+            existingDict = json
+        }
+
+        // 建構 tokens 子字典
+        var tokensDict: [String: Any] = [
+            "access_token": oauth.accessToken,
+        ]
+        if let refreshToken = oauth.refreshToken {
+            tokensDict["refresh_token"] = refreshToken
+        }
+        if let accountId = oauth.accountId {
+            tokensDict["account_id"] = accountId
+        }
+
+        existingDict["tokens"] = tokensDict
+
+        // 更新 last_refresh
+        if let lastRefresh = oauth.lastRefresh {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            existingDict["last_refresh"] = formatter.string(from: lastRefresh)
+        }
+
+        // 回寫檔案
+        if let data = try? JSONSerialization.data(
+            withJSONObject: existingDict,
+            options: [.prettyPrinted, .sortedKeys]
+        ) {
+            try? data.write(to: credentialPath)
+        }
     }
 }

@@ -18,6 +18,12 @@ public struct ClaudeAPIClient: Sendable {
     /// 從 Claude API 取得用量資料。
     public var fetchUsage: @Sendable (_ accessToken: String) async throws -> ClaudeUsageResponse
     
+    /// 以指定的閉包建立實例。
+    ///
+    /// - Parameters:
+    ///   - loadCredentials: 從 `~/.claude/.credentials.json` 或鑰匙圈載入 Claude Code OAuth 憑證。
+    ///   - refreshTokenIfNeeded: 若權杖已過期或即將過期，重新整理存取權杖。回傳更新後的憑證，並將新權杖回寫至原始來源。
+    ///   - fetchUsage: 從 Claude API 取得用量資料。
     public init(
         loadCredentials: @escaping @Sendable () throws -> ClaudeOAuth?,
         refreshTokenIfNeeded: @escaping @Sendable (_ current: ClaudeOAuth) async throws -> ClaudeOAuth,
@@ -45,7 +51,7 @@ public enum ClaudeAPIError: LocalizedError, Sendable {
     
     /// OAuth token 缺少必要的 scope。
     case insufficientScope(String)
-
+    
     /// HTTP 錯誤，附帶狀態碼與訊息。
     case httpError(statusCode: Int, message: String)
     
@@ -62,13 +68,13 @@ public enum ClaudeAPIError: LocalizedError, Sendable {
         }
         return false
     }
-
+    
     /// 是否為 scope 不足導致的 HTTP 403 錯誤。
     public var isInsufficientScope: Bool {
         if case .insufficientScope = self { return true }
         return false
     }
-
+    
     public var errorDescription: String? {
         switch self {
         case .credentialsNotFound:
@@ -105,24 +111,17 @@ extension ClaudeAPIClient {
         ClaudeAPIClient(
             loadCredentials: {
                 var candidates: [ClaudeOAuth] = []
-
+                
                 // 1. 嘗試從檔案載入
-                // 在 App Sandbox 中，FileManager.homeDirectoryForCurrentUser 回傳容器路徑，
-                // 需使用 getpwuid 取得真實家目錄，搭配 absolute-path entitlement 存取。
-                let homeDir: URL = if let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir {
-                    URL(fileURLWithPath: String(cString: dir))
-                } else {
-                    FileManager.default.homeDirectoryForCurrentUser
-                }
-                let credentialPath = homeDir.appendingPathComponent(ClaudeConstants.credentialRelativePath)
-
+                let credentialPath = FileManager.default.realHomeDirectory.appendingPathComponent(ClaudeConstants.credentialRelativePath)
+                
                 if let fileData = FileManager.default.contents(atPath: credentialPath.path),
                    let fileText = String(data: fileData, encoding: .utf8),
                    let file = ClaudeCredentialFile.parse(from: fileText),
                    let oauth = file.claudeAiOauth {
                     candidates.append(oauth)
                 }
-
+                
                 // 2. macOS 鑰匙圈
                 let query: [String: Any] = [
                     kSecClass as String: kSecClassGenericPassword,
@@ -132,7 +131,7 @@ extension ClaudeAPIClient {
                 ]
                 var result: AnyObject?
                 let status = SecItemCopyMatching(query as CFDictionary, &result)
-
+                
                 if status == errSecSuccess,
                    let data = result as? Data,
                    let text = String(data: data, encoding: .utf8),
@@ -140,7 +139,7 @@ extension ClaudeAPIClient {
                    let oauth = file.claudeAiOauth {
                     candidates.append(oauth)
                 }
-
+                
                 // 從所有來源中選出最新的憑證（依 expiresAt 排序）
                 return candidates.max {
                     ($0.expiresAt ?? 0) < ($1.expiresAt ?? 0)
@@ -155,31 +154,34 @@ extension ClaudeAPIClient {
                     throw ClaudeAPIError.noRefreshToken
                 }
                 
-                let refreshRequest = ClaudeTokenRefreshRequest(
+                let refreshBody = ClaudeTokenRefreshRequest(
                     refreshToken: refreshToken,
                     clientID: clientID
                 )
-                var request = URLRequest(url: URL(string: ClaudeConstants.refreshURL)!)
-                request.httpMethod = "POST"
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.httpBody = try JSONEncoder().encode(refreshRequest)
+                let request = try RequestBuilder(urlString: ClaudeConstants.refreshURL)
+                    .method(.post)
+                    .jsonBody(refreshBody)
+                    .build()
                 
-                let (data, response) = try await URLSession.shared.data(for: request)
-                
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    throw ClaudeAPIError.invalidResponse
-                }
-                guard (200...299).contains(httpResponse.statusCode) else {
-                    // 401 表示 refresh token 已被使用或過期，
-                    // 但 access token 可能仍然有效（例如剛重新登入後），
-                    // 回傳當前憑證讓後續 API 呼叫驗證。
+                let (httpResponse, data) = try await HTTPClient().fetchRaw(request) { httpResponse, responseData in
+                    // 401: 回傳 data 讓外層處理，跳過預設驗證
                     if httpResponse.statusCode == 401 {
-                        return current
+                        return responseData
                     }
-                    throw ClaudeAPIError.refreshFailed(
-                        statusCode: httpResponse.statusCode,
-                        message: extractErrorMessage(from: data)
-                    )
+                    // 其他非 2xx: 拋出 refreshFailed
+                    guard (200...299).contains(httpResponse.statusCode) else {
+                        throw ClaudeAPIError.refreshFailed(
+                            statusCode: httpResponse.statusCode,
+                            message: extractErrorMessage(from: responseData)
+                        )
+                    }
+                    return nil
+                }
+                
+                // 401 表示 refresh token 已被使用或過期，
+                // 但 access token 可能仍然有效，回傳當前憑證讓後續 API 呼叫驗證。
+                if httpResponse.statusCode == 401 {
+                    return current
                 }
                 
                 let refreshResponse = try JSONDecoder().decode(
@@ -189,10 +191,11 @@ extension ClaudeAPIClient {
                 
                 // 建構更新後的憑證
                 let nowMs = Date().timeIntervalSince1970 * 1000
-                let expiresAtMs: Double? = if let expiresIn = refreshResponse.expiresIn {
-                    nowMs + Double(expiresIn) * 1000
+                let expiresAtMs: Double?
+                if let expiresIn = refreshResponse.expiresIn {
+                    expiresAtMs = nowMs + Double(expiresIn) * 1000
                 } else {
-                    current.expiresAt
+                    expiresAtMs = current.expiresAt
                 }
                 
                 let updated = ClaudeOAuth(
@@ -203,101 +206,102 @@ extension ClaudeAPIClient {
                 )
                 
                 // 將更新後的憑證回寫至檔案
-                writeBackCredentials(updated)
+                Self.writeBackCredentials(updated)
                 
                 return updated
             },
             fetchUsage: { accessToken in
-                var request = URLRequest(url: URL(string: ClaudeConstants.usageURL)!)
-                request.httpMethod = "GET"
-                request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-                request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
-                
-                let (data, response) = try await URLSession.shared.data(for: request)
-                
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    throw ClaudeAPIError.invalidResponse
-                }
-                
-                // 處理 401 -- 權杖可能在重新整理檢查與實際請求之間過期
-                guard httpResponse.statusCode != 401 else {
-                    throw ClaudeAPIError.httpError(
-                        statusCode: 401,
-                        message: "Unauthorized — token may have expired"
-                    )
-                }
-
-                // 處理 403 -- scope 不足，需要重新登入
-                guard httpResponse.statusCode != 403 else {
-                    let message = extractErrorMessage(from: data)
-                    if message.contains("scope") {
-                        throw ClaudeAPIError.insufficientScope(message)
-                    }
-                    throw ClaudeAPIError.httpError(statusCode: 403, message: message)
-                }
-
-                guard (200...299).contains(httpResponse.statusCode) else {
-                    throw ClaudeAPIError.httpError(
-                        statusCode: httpResponse.statusCode,
-                        message: extractErrorMessage(from: data)
-                    )
-                }
+                let request = RequestBuilder(urlString: ClaudeConstants.usageURL)
+                    .method(.get)
+                    .bearerToken(accessToken)
+                    .header("anthropic-beta", "oauth-2025-04-20")
+                    .build()
                 
                 do {
-                    return try JSONDecoder().decode(ClaudeUsageResponse.self, from: data)
-                } catch {
-                    let rawJSON = String(data: data, encoding: .utf8) ?? "<non-UTF8 data>"
-                    throw ClaudeAPIError.decodingFailed(
-                        underlyingError: error,
-                        rawResponse: rawJSON
-                    )
+                    return try await HTTPClient().fetch(request, responseType: ClaudeUsageResponse.self) { httpResponse, responseData in
+                        // 401 — 權杖可能在重新整理檢查與實際請求之間過期
+                        guard httpResponse.statusCode != 401 else {
+                            throw ClaudeAPIError.httpError(
+                                statusCode: 401,
+                                message: "Unauthorized — token may have expired"
+                            )
+                        }
+                        // 403 — scope 不足，需要重新登入
+                        guard httpResponse.statusCode != 403 else {
+                            let message = extractErrorMessage(from: responseData)
+                            if message.contains("scope") {
+                                throw ClaudeAPIError.insufficientScope(message)
+                            }
+                            throw ClaudeAPIError.httpError(statusCode: 403, message: message)
+                        }
+                        return nil
+                    }
+                } catch let error as ClaudeAPIError {
+                    throw error
+                } catch let error as HTTPClientError {
+                    throw error.toClaudeAPIError()
                 }
             }
         )
     }
 }
 
-// MARK: - 憑證回寫輔助
+// MARK: - 私有輔助
 
-/// 將更新後的憑證回寫至 `~/.claude/.credentials.json`。
-///
-/// - Parameter oauth: 要回寫的 OAuth 憑證。
-private func writeBackCredentials(_ oauth: ClaudeOAuth) {
-    let homeDir: URL = if let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir {
-        URL(fileURLWithPath: String(cString: dir))
-    } else {
-        FileManager.default.homeDirectoryForCurrentUser
+private extension ClaudeAPIClient {
+
+    /// 將更新後的憑證回寫至 `~/.claude/.credentials.json`。
+    ///
+    /// - Parameter oauth: 要回寫的 OAuth 憑證。
+    static func writeBackCredentials(_ oauth: ClaudeOAuth) {
+        let credentialPath = FileManager.default.realHomeDirectory.appendingPathComponent(ClaudeConstants.credentialRelativePath)
+
+        // 讀取既有檔案以保留其他欄位
+        var existingDict: [String: Any] = [:]
+        if let fileData = FileManager.default.contents(atPath: credentialPath.path),
+           let json = try? JSONSerialization.jsonObject(with: fileData) as? [String: Any] {
+            existingDict = json
+        }
+
+        // 建構 claudeAiOauth 子字典
+        var oauthDict: [String: Any] = [
+            "accessToken": oauth.accessToken,
+        ]
+        if let refreshToken = oauth.refreshToken {
+            oauthDict["refreshToken"] = refreshToken
+        }
+        if let expiresAt = oauth.expiresAt {
+            oauthDict["expiresAt"] = expiresAt
+        }
+        if let subscriptionType = oauth.subscriptionType {
+            oauthDict["subscriptionType"] = subscriptionType
+        }
+
+        existingDict["claudeAiOauth"] = oauthDict
+
+        // 回寫檔案
+        if let data = try? JSONSerialization.data(
+            withJSONObject: existingDict,
+            options: [.prettyPrinted, .sortedKeys]
+        ) {
+            try? data.write(to: credentialPath)
+        }
     }
-    let credentialPath = homeDir.appendingPathComponent(ClaudeConstants.credentialRelativePath)
+}
+
+extension HTTPClientError {
     
-    // 讀取既有檔案以保留其他欄位
-    var existingDict: [String: Any] = [:]
-    if let fileData = FileManager.default.contents(atPath: credentialPath.path),
-       let json = try? JSONSerialization.jsonObject(with: fileData) as? [String: Any] {
-        existingDict = json
-    }
-    
-    // 建構 claudeAiOauth 子字典
-    var oauthDict: [String: Any] = [
-        "accessToken": oauth.accessToken,
-    ]
-    if let refreshToken = oauth.refreshToken {
-        oauthDict["refreshToken"] = refreshToken
-    }
-    if let expiresAt = oauth.expiresAt {
-        oauthDict["expiresAt"] = expiresAt
-    }
-    if let subscriptionType = oauth.subscriptionType {
-        oauthDict["subscriptionType"] = subscriptionType
-    }
-    
-    existingDict["claudeAiOauth"] = oauthDict
-    
-    // 回寫檔案
-    if let data = try? JSONSerialization.data(
-        withJSONObject: existingDict,
-        options: [.prettyPrinted, .sortedKeys]
-    ) {
-        try? data.write(to: credentialPath)
+    /// 將 `HTTPClientError` 轉換為對應的 ``ClaudeAPIError``。
+    ///
+    /// - Returns: 對應的 ``ClaudeAPIError``。
+    func toClaudeAPIError() -> ClaudeAPIError {
+        switch self {
+        case .invalidResponse:
+                .invalidResponse
+        case let .httpError(statusCode, message, _):
+                .httpError(statusCode: statusCode, message: message)
+        case let .decodingFailed(underlyingError, rawResponse):
+                .decodingFailed(underlyingError: underlyingError, rawResponse: rawResponse)
+        }
     }
 }

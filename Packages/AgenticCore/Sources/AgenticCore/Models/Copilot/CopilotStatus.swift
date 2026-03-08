@@ -28,6 +28,13 @@ public struct CopilotStatusResponse: Codable, Sendable, Equatable {
         case monthlyQuotas = "monthly_quotas"
     }
     
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - copilotPlan: 使用者的 Copilot 方案識別碼（例如 `"copilot_for_individual_user"`）。
+    ///   - quotaSnapshots: 付費方案的配額快照。
+    ///   - limitedUserQuotas: 免費方案使用者的剩餘配額。
+    ///   - monthlyQuotas: 免費方案使用者的每月配額總量。
     public init(
         copilotPlan: String? = nil,
         quotaSnapshots: QuotaSnapshots? = nil,
@@ -57,6 +64,11 @@ public struct QuotaSnapshots: Codable, Sendable, Equatable {
         case chat
     }
     
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - premiumInteractions: 進階互動的配額快照。
+    ///   - chat: 聊天功能的配額快照。
     public init(premiumInteractions: QuotaSnapshot? = nil, chat: QuotaSnapshot? = nil) {
         self.premiumInteractions = premiumInteractions
         self.chat = chat
@@ -73,6 +85,9 @@ public struct QuotaSnapshot: Codable, Sendable, Equatable {
         case percentRemaining = "percent_remaining"
     }
     
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameter percentRemaining: 配額剩餘百分比（0 至 100）。
     public init(percentRemaining: Double) {
         self.percentRemaining = percentRemaining
     }
@@ -88,7 +103,12 @@ public struct LimitedQuotas: Codable, Sendable, Equatable {
     
     /// 程式碼補全的剩餘次數。
     public let completions: Int?
-    
+
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - chat: 聊天功能的剩餘次數。
+    ///   - completions: 程式碼補全的剩餘次數。
     public init(chat: Int? = nil, completions: Int? = nil) {
         self.chat = chat
         self.completions = completions
@@ -103,7 +123,12 @@ public struct MonthlyQuotas: Codable, Sendable, Equatable {
     
     /// 程式碼補全的每月總配額。
     public let completions: Int?
-    
+
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - chat: 聊天功能的每月總配額。
+    ///   - completions: 程式碼補全的每月總配額。
     public init(chat: Int? = nil, completions: Int? = nil) {
         self.chat = chat
         self.completions = completions

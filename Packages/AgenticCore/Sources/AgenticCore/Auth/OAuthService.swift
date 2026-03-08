@@ -28,6 +28,14 @@ public struct DeviceCodeResponse: Codable, Sendable {
         case interval
     }
     
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - deviceCode: 裝置驗證碼。
+    ///   - userCode: 使用者驗證碼，需在瀏覽器中輸入。
+    ///   - verificationUri: 驗證頁面的 URL。
+    ///   - expiresIn: 驗證碼的有效秒數。
+    ///   - interval: 輪詢間隔秒數。
     public init(
         deviceCode: String,
         userCode: String,
@@ -61,6 +69,12 @@ public struct OAuthTokenResponse: Codable, Sendable {
         case scope
     }
     
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - accessToken: 存取權杖。
+    ///   - tokenType: 權杖類型（例如 `"bearer"`）。
+    ///   - scope: 授權範圍。
     public init(
         accessToken: String,
         tokenType: String,
@@ -84,6 +98,42 @@ private struct OAuthErrorResponse: Codable, Sendable {
     enum CodingKeys: String, CodingKey {
         case error
         case errorDescription = "error_description"
+    }
+}
+
+// MARK: - 請求模型
+
+/// `POST /login/device/code` 的請求。
+private struct DeviceCodeRequest: Encodable, Sendable {
+    
+    /// OAuth 用戶端識別碼。
+    let clientId: String
+    
+    /// 授權範圍。
+    let scope: String
+    
+    enum CodingKeys: String, CodingKey {
+        case clientId = "client_id"
+        case scope
+    }
+}
+
+/// `POST /login/oauth/access_token` 的輪詢請求。
+private struct PollAccessTokenRequest: Encodable, Sendable {
+    
+    /// OAuth 用戶端識別碼。
+    let clientId: String
+    
+    /// 裝置驗證碼。
+    let deviceCode: String
+    
+    /// OAuth 授權類型。
+    let grantType: String
+    
+    enum CodingKeys: String, CodingKey {
+        case clientId = "client_id"
+        case deviceCode = "device_code"
+        case grantType = "grant_type"
     }
 }
 
@@ -129,6 +179,11 @@ public struct OAuthService: Sendable {
         _ clientID: String, _ deviceCode: String, _ interval: Int
     ) async throws -> OAuthTokenResponse
     
+    /// 以指定的閉包建立實例。
+    ///
+    /// - Parameters:
+    ///   - requestDeviceCode: 請求裝置驗證碼以啟動登入流程。
+    ///   - pollForAccessToken: 輪詢存取權杖。持續等待直到授權完成、過期或被拒絕。
     public init(
         requestDeviceCode: @escaping @Sendable (_ clientID: String) async throws ->
         DeviceCodeResponse,
@@ -148,17 +203,20 @@ extension OAuthService {
     /// 使用 `URLSession` 的正式版實作。
     public static let live = OAuthService(
         requestDeviceCode: { clientID in
-            let request = GitHubEndpoint.deviceCode(clientID: clientID).makeRequest()
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let request = try RequestBuilder(url: GitHubEndpoint.deviceCode(clientID: clientID).url)
+                .method(.post)
+                .header("Accept", "application/json")
+                .jsonBody(DeviceCodeRequest(clientId: clientID, scope: "user"))
+                .build()
             
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode)
-            else {
-                let msg = String(data: data, encoding: .utf8) ?? "Unknown error"
-                throw OAuthError.requestFailed(msg)
+            do {
+                return try await HTTPClient().fetch(
+                    request,
+                    responseType: DeviceCodeResponse.self
+                )
+            } catch let error as HTTPClientError {
+                throw OAuthError.requestFailed(error.localizedDescription)
             }
-            
-            return try JSONDecoder().decode(DeviceCodeResponse.self, from: data)
         },
         pollForAccessToken: { clientID, deviceCode, interval in
             var pollInterval = interval
@@ -166,10 +224,21 @@ extension OAuthService {
             while true {
                 try await Task.sleep(for: .seconds(pollInterval))
                 
-                let request = GitHubEndpoint
-                    .pollAccessToken(clientID: clientID, deviceCode: deviceCode)
-                    .makeRequest()
-                let (data, _) = try await URLSession.shared.data(for: request)
+                let request = try RequestBuilder(
+                    url: GitHubEndpoint.pollAccessToken(clientID: clientID, deviceCode: deviceCode).url
+                )
+                    .method(.post)
+                    .header("Accept", "application/json")
+                    .jsonBody(PollAccessTokenRequest(
+                        clientId: clientID,
+                        deviceCode: deviceCode,
+                        grantType: "urn:ietf:params:oauth:grant-type:device_code"
+                    ))
+                    .build()
+                let (_, data) = try await HTTPClient().fetchRaw(request) { _, responseData in
+                    // OAuth 輪詢：所有回應都需要自行解析，跳過預設 2xx 驗證
+                    return responseData
+                }
                 
                 // 先嘗試解碼為成功的權杖回應
                 if let token = try? JSONDecoder().decode(OAuthTokenResponse.self, from: data) {
@@ -177,9 +246,7 @@ extension OAuthService {
                 }
                 
                 // 否則檢查錯誤回應
-                if let errorResponse = try? JSONDecoder().decode(
-                    OAuthErrorResponse.self, from: data)
-                {
+                if let errorResponse = try? JSONDecoder().decode(OAuthErrorResponse.self, from: data) {
                     switch errorResponse.error {
                     case "authorization_pending":
                         continue

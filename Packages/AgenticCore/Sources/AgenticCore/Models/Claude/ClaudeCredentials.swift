@@ -4,10 +4,13 @@ import Foundation
 
 /// `~/.claude/.credentials.json` 的根結構。
 public struct ClaudeCredentialFile: Codable, Sendable {
-   
+    
     /// Claude AI OAuth 憑證。
     public let claudeAiOauth: ClaudeOAuth?
-
+    
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameter claudeAiOauth: Claude AI OAuth 憑證。
     public init(claudeAiOauth: ClaudeOAuth? = nil) {
         self.claudeAiOauth = claudeAiOauth
     }
@@ -21,13 +24,20 @@ public struct ClaudeOAuth: Codable, Sendable, Equatable {
     
     /// 重新整理權杖。
     public var refreshToken: String?
-   
+    
     /// 權杖到期時間，以 Unix 時間戳記（**毫秒**）表示。
     public var expiresAt: Double?
     
     /// 訂閱類型字串（例如 `"pro"`、`"max"`、`"free"`）。
     public var subscriptionType: String?
-
+    
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - accessToken: 存取權杖。
+    ///   - refreshToken: 重新整理權杖。
+    ///   - expiresAt: 權杖到期時間，以 Unix 時間戳記（**毫秒**）表示。
+    ///   - subscriptionType: 訂閱類型字串（例如 `"pro"`、`"max"`、`"free"`）。
     public init(
         accessToken: String,
         refreshToken: String? = nil,
@@ -39,7 +49,7 @@ public struct ClaudeOAuth: Codable, Sendable, Equatable {
         self.expiresAt = expiresAt
         self.subscriptionType = subscriptionType
     }
-
+    
     /// 判斷權杖是否已過期或即將過期（在 `bufferMs` 緩衝時間內）。
     ///
     /// - Parameter bufferMs: 在實際到期前的緩衝毫秒數（預設 5 分鐘）。
@@ -64,17 +74,17 @@ public struct ClaudeTokenRefreshRequest: Codable, Sendable {
     
     /// 用戶端識別碼。
     public let clientId: String
-   
+    
     /// 權限範圍。
     public let scope: String
-
+    
     enum CodingKeys: String, CodingKey {
         case grantType = "grant_type"
         case refreshToken = "refresh_token"
         case clientId = "client_id"
         case scope
     }
-
+    
     /// 建立權杖重新整理請求。
     ///
     /// - Parameters:
@@ -93,19 +103,25 @@ public struct ClaudeTokenRefreshResponse: Codable, Sendable {
     
     /// 新的存取權杖。
     public let accessToken: String
-   
+    
     /// 新的重新整理權杖（可能為 `nil`）。
     public let refreshToken: String?
-  
+    
     /// 權杖有效期限（單位：秒）。
     public let expiresIn: Int?
-
+    
     enum CodingKeys: String, CodingKey {
         case accessToken = "access_token"
         case refreshToken = "refresh_token"
         case expiresIn = "expires_in"
     }
-
+    
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - accessToken: 新的存取權杖。
+    ///   - refreshToken: 新的重新整理權杖（可能為 `nil`）。
+    ///   - expiresIn: 權杖有效期限（單位：秒）。
     public init(
         accessToken: String,
         refreshToken: String? = nil,
@@ -121,22 +137,22 @@ public struct ClaudeTokenRefreshResponse: Codable, Sendable {
 
 /// Claude Code 相關常數。
 public enum ClaudeConstants {
-
+    
     /// Claude Code OAuth 用戶端識別碼預設值（base64 編碼）。
     public static let defaultClientID = decodeBase64("OWQxYzI1MGEtZTYxYi00NGQ5LTg4ZWQtNTk0NGQxOTYyZjVl")
-
+    
     /// OAuth 權限範圍。
     public static let scopes = "user:profile user:inference user:sessions:claude_code user:mcp_servers"
-   
+    
     /// 憑證檔案相對於家目錄的路徑。
     public static let credentialRelativePath = ".claude/.credentials.json"
-   
+    
     /// Claude Code 使用的 macOS 鑰匙圈服務名稱。
     public static let keychainService = "Claude Code-credentials"
-   
+    
     /// OAuth 權杖重新整理的 URL。
     public static let refreshURL = "https://platform.claude.com/v1/oauth/token"
-  
+    
     /// 用量 API 的 URL。
     public static let usageURL = "https://api.anthropic.com/api/oauth/usage"
 }
@@ -153,13 +169,13 @@ extension ClaudeCredentialFile {
     /// - Returns: 解析成功的 ``ClaudeCredentialFile``，失敗時回傳 `nil`。
     public static func parse(from text: String) -> ClaudeCredentialFile? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-
+        
         // 先嘗試直接 JSON 解析
         if let data = trimmed.data(using: .utf8),
            let parsed = try? JSONDecoder().decode(ClaudeCredentialFile.self, from: data) {
             return parsed
         }
-
+        
         // 嘗試十六進位解碼（macOS 鑰匙圈有時回傳十六進位編碼的位元組）
         var hex = trimmed
         if hex.hasPrefix("0x") || hex.hasPrefix("0X") {
@@ -170,7 +186,7 @@ extension ClaudeCredentialFile {
               hex.allSatisfy({ $0.isHexDigit }) else {
             return nil
         }
-
+        
         var bytes: [UInt8] = []
         var index = hex.startIndex
         while index < hex.endIndex {
@@ -180,7 +196,7 @@ extension ClaudeCredentialFile {
             }
             index = nextIndex
         }
-
+        
         let data = Data(bytes)
         return try? JSONDecoder().decode(ClaudeCredentialFile.self, from: data)
     }

@@ -15,26 +15,37 @@ public struct CopilotUsageSummary: Equatable, Sendable {
     
     /// 距離用量計數器重置的天數。
     public let daysUntilReset: Int
-
-    // MARK: - 付費方案欄位（來自 quota_snapshots）
-
+    
+    // MARK: 付費方案欄位（來自 quota_snapshots）
+    
     /// 進階請求的剩餘百分比（0.0 至 1.0）。免費方案為 `nil`。
     public let premiumPercentRemaining: Double?
-
-    // MARK: - 免費方案欄位（來自 limited_user_quotas）
-
+    
+    // MARK: 免費方案欄位（來自 limited_user_quotas）
+    
     /// 聊天功能的剩餘次數（免費方案）。付費方案為 `nil`。
     public let freeChatRemaining: Int?
-   
+    
     /// 聊天功能的每月總配額（免費方案）。付費方案為 `nil`。
     public let freeChatTotal: Int?
-  
+    
     /// 程式碼補全的剩餘次數（免費方案）。付費方案為 `nil`。
     public let freeCompletionsRemaining: Int?
-   
+    
     /// 程式碼補全的每月總配額（免費方案）。付費方案為 `nil`。
     public let freeCompletionsTotal: Int?
-
+    
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - plan: 從內部 API 自動偵測的訂閱方案。
+    ///   - planLimit: 此方案每月的進階請求配額上限。
+    ///   - daysUntilReset: 距離用量計數器重置的天數。
+    ///   - premiumPercentRemaining: 進階請求的剩餘百分比（0.0 至 1.0）。免費方案為 `nil`。
+    ///   - freeChatRemaining: 聊天功能的剩餘次數（免費方案）。付費方案為 `nil`。
+    ///   - freeChatTotal: 聊天功能的每月總配額（免費方案）。付費方案為 `nil`。
+    ///   - freeCompletionsRemaining: 程式碼補全的剩餘次數（免費方案）。付費方案為 `nil`。
+    ///   - freeCompletionsTotal: 程式碼補全的每月總配額（免費方案）。付費方案為 `nil`。
     public init(
         plan: CopilotPlan,
         planLimit: Int,
@@ -54,12 +65,12 @@ public struct CopilotUsageSummary: Equatable, Sendable {
         self.freeCompletionsRemaining = freeCompletionsRemaining
         self.freeCompletionsTotal = freeCompletionsTotal
     }
-
+    
     /// 是否為免費方案使用者。
     public var isFreeTier: Bool {
         plan == .free
     }
-
+    
     /// 用於 UI 顯示的使用百分比（0.0 至 1.0），表示已使用的比例而非剩餘比例。
     ///
     /// - 付費方案：由 `premiumPercentRemaining` 推算。
@@ -73,7 +84,7 @@ public struct CopilotUsageSummary: Equatable, Sendable {
         }
         return 0
     }
-
+    
     /// 預估已使用的進階請求次數（僅限付費方案）。
     public var premiumRequestsUsed: Int {
         if let premiumPercentRemaining {
@@ -82,7 +93,7 @@ public struct CopilotUsageSummary: Equatable, Sendable {
         }
         return 0
     }
-
+    
     /// 預估剩餘的進階請求次數（僅限付費方案）。
     public var remaining: Int {
         if let premiumPercentRemaining {

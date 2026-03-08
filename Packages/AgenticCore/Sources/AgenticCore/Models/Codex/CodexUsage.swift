@@ -30,6 +30,14 @@ public struct CodexUsageResponse: Codable, Sendable, Equatable {
         case planType = "plan_type"
     }
     
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - rateLimit: 主要速率限制（包含工作階段與每週視窗）。
+    ///   - additionalRateLimits: 各模型的額外速率限制。
+    ///   - codeReviewRateLimit: 程式碼審查的速率限制。
+    ///   - credits: 額度餘額資訊。
+    ///   - planType: 方案類型字串（例如 `"free"`、`"plus"`、`"pro"`）。
     public init(
         rateLimit: CodexRateLimit? = nil,
         additionalRateLimits: [CodexAdditionalRateLimit]? = nil,
@@ -59,6 +67,11 @@ public struct CodexRateLimit: Codable, Sendable, Equatable {
         case secondaryWindow = "secondary_window"
     }
     
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - primaryWindow: 主要視窗（工作階段，5 小時）。
+    ///   - secondaryWindow: 次要視窗（每週，7 天）。
     public init(
         primaryWindow: CodexUsageWindow? = nil,
         secondaryWindow: CodexUsageWindow? = nil
@@ -71,14 +84,11 @@ public struct CodexRateLimit: Codable, Sendable, Equatable {
 /// 單一用量視窗（工作階段或每週）。
 public struct CodexUsageWindow: Codable, Sendable, Equatable {
     
-    
     /// 使用率百分比（0 至 100）。
     public let usedPercent: Double?
     
-    
     /// 此視窗重置的 Unix 時間戳記（秒）。
     public let resetAt: Double?
-    
     
     /// 距離此視窗重置的秒數。
     public let resetAfterSeconds: Double?
@@ -89,6 +99,12 @@ public struct CodexUsageWindow: Codable, Sendable, Equatable {
         case resetAfterSeconds = "reset_after_seconds"
     }
     
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - usedPercent: 使用率百分比（0 至 100）。
+    ///   - resetAt: 此視窗重置的 Unix 時間戳記（秒）。
+    ///   - resetAfterSeconds: 距離此視窗重置的秒數。
     public init(
         usedPercent: Double? = nil,
         resetAt: Double? = nil,
@@ -114,6 +130,11 @@ public struct CodexAdditionalRateLimit: Codable, Sendable, Equatable {
         case rateLimit = "rate_limit"
     }
     
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - limitName: 限制名稱（例如 `"o1-pro rate limit"`）。
+    ///   - rateLimit: 該模型的速率限制。
     public init(limitName: String? = nil, rateLimit: CodexRateLimit? = nil) {
         self.limitName = limitName
         self.rateLimit = rateLimit
@@ -130,6 +151,9 @@ public struct CodexCodeReviewRateLimit: Codable, Sendable, Equatable {
         case primaryWindow = "primary_window"
     }
     
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameter primaryWindow: 主要視窗（每週）。
     public init(primaryWindow: CodexUsageWindow? = nil) {
         self.primaryWindow = primaryWindow
     }
@@ -141,6 +165,9 @@ public struct CodexCredits: Codable, Sendable, Equatable {
     /// 目前的額度餘額。
     public let balance: Double?
     
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameter balance: 目前的額度餘額。
     public init(balance: Double? = nil) {
         self.balance = balance
     }
@@ -162,6 +189,12 @@ public struct CodexUsageHeaders: Sendable, Equatable {
     /// 額度餘額，來自 `x-codex-credits-balance`。
     public let creditsBalance: Double?
     
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - primaryUsedPercent: 工作階段（5 小時）使用百分比，來自 `x-codex-primary-used-percent`。
+    ///   - secondaryUsedPercent: 每週（7 天）使用百分比，來自 `x-codex-secondary-used-percent`。
+    ///   - creditsBalance: 額度餘額，來自 `x-codex-credits-balance`。
     public init(
         primaryUsedPercent: Double? = nil,
         secondaryUsedPercent: Double? = nil,

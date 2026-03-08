@@ -11,22 +11,22 @@ import Foundation
 /// - ``team``：Team 方案
 /// - ``enterprise``：Enterprise 方案
 public enum CodexPlan: String, Sendable, Equatable {
-
+    
     /// 免費方案。
     case free = "Free"
-
+    
     /// Plus 方案。
     case plus = "Plus"
-
+    
     /// Pro 方案。
     case pro = "Pro"
-
+    
     /// Team 方案。
     case team = "Team"
-
+    
     /// Enterprise 方案。
     case enterprise = "Enterprise"
-
+    
     /// 從 API 回傳的方案類型字串解析為 ``CodexPlan``。
     ///
     /// 已知的 API 值對應：
@@ -51,7 +51,7 @@ public enum CodexPlan: String, Sendable, Equatable {
         default: return nil
         }
     }
-
+    
     /// 適合作為標章顯示的簡短標籤文字。
     public var badgeLabel: String { rawValue }
 }

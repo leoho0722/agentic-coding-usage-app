@@ -14,14 +14,15 @@ public enum DateUtils {
     public static func daysUntilReset(from date: Date = .now) -> Int {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "UTC")!
-
+        
         // 取得下個月的 1 日
         guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: date),
               let firstOfNextMonth = calendar.date(
-                  from: calendar.dateComponents([.year, .month], from: nextMonth)) else {
+                from: calendar.dateComponents([.year, .month], from: nextMonth)
+              ) else {
             return 0
         }
-
+        
         let components = calendar.dateComponents([.day], from: date, to: firstOfNextMonth)
         return max(0, components.day ?? 0)
     }

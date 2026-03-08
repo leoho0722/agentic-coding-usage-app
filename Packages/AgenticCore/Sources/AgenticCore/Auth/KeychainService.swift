@@ -17,6 +17,12 @@ public struct KeychainService: Sendable {
     /// 從鑰匙圈刪除資料。
     public var delete: @Sendable (_ key: String) throws -> Void
     
+    /// 以指定的閉包建立實例。
+    ///
+    /// - Parameters:
+    ///   - save: 將資料儲存至鑰匙圈。
+    ///   - load: 從鑰匙圈載入資料。
+    ///   - delete: 從鑰匙圈刪除資料。
     public init(
         save: @escaping @Sendable (_ key: String, _ data: Data) throws -> Void,
         load: @escaping @Sendable (_ key: String) throws -> Data?,

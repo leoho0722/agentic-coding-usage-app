@@ -26,6 +26,13 @@ public struct ClaudeUsageResponse: Codable, Sendable, Equatable {
         case extraUsage = "extra_usage"
     }
     
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - fiveHour: 工作階段用量視窗（5 小時）。
+    ///   - sevenDay: 每週用量視窗（7 天）。
+    ///   - sevenDayOpus: Opus 每週用量視窗（7 天，依方案而異）。
+    ///   - extraUsage: 額外用量資訊（超出方案內含配額的部分）。
     public init(
         fiveHour: ClaudeUsagePeriod? = nil,
         sevenDay: ClaudeUsagePeriod? = nil,
@@ -41,21 +48,26 @@ public struct ClaudeUsageResponse: Codable, Sendable, Equatable {
 
 /// 單一使用率視窗（例如工作階段 5 小時、每週 7 天）。
 public struct ClaudeUsagePeriod: Codable, Sendable, Equatable {
-
+    
     /// 使用率百分比，0 至 100（API 可能回傳小數，例如 78.0、96.4）。
     public let utilization: Double
-
+    
     /// 此視窗重置的 ISO 8601 時間戳記，可能為 `null`。
     public let resetsAt: String?
-
+    
     /// 提供整數百分比給 UI 使用。
     public var utilizationPercent: Int { Int(utilization) }
-
+    
     enum CodingKeys: String, CodingKey {
         case utilization
         case resetsAt = "resets_at"
     }
-
+    
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - utilization: 使用率百分比，0 至 100（API 可能回傳小數，例如 78.0、96.4）。
+    ///   - resetsAt: 此視窗重置的 ISO 8601 時間戳記，可能為 `null`。
     public init(utilization: Double, resetsAt: String?) {
         self.utilization = utilization
         self.resetsAt = resetsAt
@@ -64,26 +76,33 @@ public struct ClaudeUsagePeriod: Codable, Sendable, Equatable {
 
 /// 額外用量資訊（超出方案內含配額後計費的部分）。
 public struct ClaudeExtraUsage: Codable, Sendable, Equatable {
-
+    
     /// 此帳號是否啟用額外用量。
     public let isEnabled: Bool
-
+    
     /// 已使用的額度（單位：美分，除以 100 為美元）。
     public let usedCredits: Int?
-
+    
     /// 每月額度上限（單位：美分）。
     public let monthlyLimit: Int?
-
+    
     /// 幣別代碼（例如 `"USD"`）。
     public let currency: String?
-
+    
     enum CodingKeys: String, CodingKey {
         case isEnabled = "is_enabled"
         case usedCredits = "used_credits"
         case monthlyLimit = "monthly_limit"
         case currency
     }
-
+    
+    /// 以指定的屬性值初始化。
+    ///
+    /// - Parameters:
+    ///   - isEnabled: 此帳號是否啟用額外用量。
+    ///   - usedCredits: 已使用的額度（單位：美分，除以 100 為美元）。
+    ///   - monthlyLimit: 每月額度上限（單位：美分）。
+    ///   - currency: 幣別代碼（例如 `"USD"`）。
     public init(
         isEnabled: Bool,
         usedCredits: Int? = nil,
@@ -95,7 +114,10 @@ public struct ClaudeExtraUsage: Codable, Sendable, Equatable {
         self.monthlyLimit = monthlyLimit
         self.currency = currency
     }
-
+    
+    /// 從解碼器初始化，將缺失的 `isEnabled` 預設為 `true`。
+    ///
+    /// - Parameter decoder: 解碼器。
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
@@ -156,10 +178,10 @@ public struct ClaudeUsageSummary: Equatable, Sendable {
         
         self.sessionUtilization = response.fiveHour?.utilizationPercent
         self.sessionResetsAt = response.fiveHour?.resetsAt
-
+        
         self.weeklyUtilization = response.sevenDay?.utilizationPercent
         self.weeklyResetsAt = response.sevenDay?.resetsAt
-
+        
         self.opusUtilization = response.sevenDayOpus?.utilizationPercent
         self.opusResetsAt = response.sevenDayOpus?.resetsAt
         
