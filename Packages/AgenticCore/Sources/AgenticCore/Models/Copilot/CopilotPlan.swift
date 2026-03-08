@@ -32,28 +32,21 @@ public enum CopilotPlan: String, Sendable, Equatable {
     /// 透過 `GET /copilot_internal/user` 回傳的 `copilot_plan` 欄位進行比對。
     ///
     /// 已知的 API 值對應：
+    /// - `"copilot_free"` 對應 `.free`
     /// - `"copilot_for_individual_user"` 對應 `.pro`
-    /// - `"copilot_for_individual_user_pro_plus"` 或包含 `"pro_plus"` 對應 `.proPlus`
-    /// - `"copilot_free"` 或包含 `"free"` 對應 `.free`
+    /// - `"copilot_for_individual_user_pro_plus"` 對應 `.proPlus`
     ///
-    /// 無法辨識的字串預設回傳 `.pro`。
+    /// 無法辨識或為 `nil` 時回傳 `nil`。
     ///
-    /// - Parameter apiPlan: API 回傳的方案字串，可為 `nil`。
-    /// - Returns: 對應的 ``CopilotPlan`` 列舉值。
-    public static func fromAPIString(_ apiPlan: String?) -> CopilotPlan {
-        guard let apiPlan, !apiPlan.isEmpty else {
-            return .pro
+    /// - Parameter raw: API 回傳的方案字串，可為 `nil`。
+    public init?(from raw: String?) {
+        guard let raw, !raw.isEmpty else { return nil }
+        switch raw.lowercased() {
+        case "copilot_free": self = .free
+        case "copilot_for_individual_user": self = .pro
+        case "copilot_for_individual_user_pro_plus": self = .proPlus
+        default: return nil
         }
-        let lowered = apiPlan.lowercased()
-        
-        if lowered.contains("pro_plus") || lowered.contains("proplus") {
-            return .proPlus
-        }
-        if lowered.contains("free") {
-            return .free
-        }
-        // "copilot_for_individual_user" 及其他付費方案預設為 Pro
-        return .pro
     }
     
     /// 適合作為標章顯示的簡短標籤文字。

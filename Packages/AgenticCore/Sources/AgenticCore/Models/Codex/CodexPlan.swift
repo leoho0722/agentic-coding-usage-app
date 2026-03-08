@@ -39,15 +39,14 @@ public enum CodexPlan: String, Sendable, Equatable {
     /// 無法辨識或為 `nil` 時回傳 `nil`。
     ///
     /// - Parameter raw: API 回傳的方案類型字串，可為 `nil`。
-    /// - Returns: 對應的 ``CodexPlan`` 列舉值，或 `nil`。
-    public static func fromAPIString(_ raw: String?) -> CodexPlan? {
+    public init?(from raw: String?) {
         guard let raw, !raw.isEmpty else { return nil }
         switch raw.lowercased() {
-        case "free": return .free
-        case "plus": return .plus
-        case "pro": return .pro
-        case "team": return .team
-        case "enterprise": return .enterprise
+        case "free": self = .free
+        case "plus": self = .plus
+        case "pro": self = .pro
+        case "team": self = .team
+        case "enterprise": self = .enterprise
         default: return nil
         }
     }

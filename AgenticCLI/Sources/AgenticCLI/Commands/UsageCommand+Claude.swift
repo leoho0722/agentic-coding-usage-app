@@ -38,7 +38,7 @@ extension UsageCommand {
             return
         }
         let summary = ClaudeUsageSummary(
-            plan: ClaudePlan.fromAPIString(refreshed.subscriptionType),
+            plan: ClaudePlan(from: refreshed.subscriptionType),
             response: response
         )
 

@@ -8,7 +8,7 @@ import Foundation
 public struct CopilotUsageSummary: Equatable, Sendable {
     
     /// 從內部 API 自動偵測的訂閱方案。
-    public let plan: CopilotPlan
+    public let plan: CopilotPlan?
     
     /// 此方案每月的進階請求配額上限。
     public let planLimit: Int
@@ -47,7 +47,7 @@ public struct CopilotUsageSummary: Equatable, Sendable {
     ///   - freeCompletionsRemaining: 程式碼補全的剩餘次數（免費方案）。付費方案為 `nil`。
     ///   - freeCompletionsTotal: 程式碼補全的每月總配額（免費方案）。付費方案為 `nil`。
     public init(
-        plan: CopilotPlan,
+        plan: CopilotPlan?,
         planLimit: Int,
         daysUntilReset: Int,
         premiumPercentRemaining: Double? = nil,

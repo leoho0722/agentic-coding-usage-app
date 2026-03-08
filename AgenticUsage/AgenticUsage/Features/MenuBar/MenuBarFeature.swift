@@ -441,7 +441,7 @@ struct MenuBarFeature {
                 return .run { send in
                     @Dependency(\.gitHubAPIClient) var apiClient
                     let status = try await apiClient.fetchCopilotStatus(token)
-                    let plan = CopilotPlan.fromAPIString(status.copilotPlan)
+                    let plan = CopilotPlan(from: status.copilotPlan)
                     let daysUntilReset = DateUtils.daysUntilReset()
                     
                     // 根據方案類型組裝不同結構的用量摘要
@@ -449,7 +449,7 @@ struct MenuBarFeature {
                     if plan == .free {
                         summary = CopilotUsageSummary(
                             plan: plan,
-                            planLimit: plan.limit,
+                            planLimit: plan?.limit ?? 0,
                             daysUntilReset: daysUntilReset,
                             freeChatRemaining: status.limitedUserQuotas?.chat,
                             freeChatTotal: status.monthlyQuotas?.chat,
@@ -460,7 +460,7 @@ struct MenuBarFeature {
                         let premiumPercentRemaining = status.quotaSnapshots?.premiumInteractions?.percentRemaining
                         summary = CopilotUsageSummary(
                             plan: plan,
-                            planLimit: plan.limit,
+                            planLimit: plan?.limit ?? 0,
                             daysUntilReset: daysUntilReset,
                             premiumPercentRemaining: premiumPercentRemaining
                         )
@@ -553,7 +553,7 @@ struct MenuBarFeature {
                     let refreshed = try await claudeClient.refreshTokenIfNeeded(credentials)
                     let response = try await claudeClient.fetchUsage(refreshed.accessToken)
                     let summary = ClaudeUsageSummary(
-                        plan: ClaudePlan.fromAPIString(refreshed.subscriptionType),
+                        plan: ClaudePlan(from: refreshed.subscriptionType),
                         response: response
                     )
                     await send(.claudeUsageResponse(summary))
@@ -584,7 +584,7 @@ struct MenuBarFeature {
                     let refreshed = try await claudeClient.refreshTokenIfNeeded(credentials)
                     let response = try await claudeClient.fetchUsage(refreshed.accessToken)
                     let summary = ClaudeUsageSummary(
-                        plan: ClaudePlan.fromAPIString(refreshed.subscriptionType),
+                        plan: ClaudePlan(from: refreshed.subscriptionType),
                         response: response
                     )
                     await send(.claudeUsageResponse(summary))

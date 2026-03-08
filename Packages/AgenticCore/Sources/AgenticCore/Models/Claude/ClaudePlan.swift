@@ -22,20 +22,19 @@ public enum ClaudePlan: String, Sendable, Equatable {
     /// 從 API 回傳的訂閱類型字串解析為 ``ClaudePlan``。
     ///
     /// 已知的 API 值對應：
+    /// - `"free"` 對應 `.free`
     /// - `"pro"` 對應 `.pro`
     /// - `"max"` 或 `"pro_plus"` 對應 `.max`
-    /// - `"free"` 對應 `.free`
     ///
     /// 無法辨識或為 `nil` 時回傳 `nil`。
     ///
     /// - Parameter raw: API 回傳的訂閱類型字串，可為 `nil`。
-    /// - Returns: 對應的 ``ClaudePlan`` 列舉值，或 `nil`。
-    public static func fromAPIString(_ raw: String?) -> ClaudePlan? {
+    public init?(from raw: String?) {
         guard let raw, !raw.isEmpty else { return nil }
         switch raw.lowercased() {
-        case "free": return .free
-        case "pro": return .pro
-        case "max", "pro_plus": return .max
+        case "free": self = .free
+        case "pro": self = .pro
+        case "max", "pro_plus": self = .max
         default: return nil
         }
     }

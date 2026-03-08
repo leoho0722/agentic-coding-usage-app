@@ -302,7 +302,7 @@ public struct CodexUsageSummary: Equatable, Sendable {
             self.creditsBalance = response.credits?.balance
         }
         
-        self.plan = CodexPlan.fromAPIString(response.planType)
+        self.plan = CodexPlan(from: response.planType)
     }
     
     /// 是否存在各模型的額外限制資料。

@@ -5,45 +5,45 @@ import Testing
 @Suite("AntigravityPlan")
 struct AntigravityPlanTests {
 
-    // MARK: - fromAPIString
+    // MARK: - init(from:)
 
     /// 驗證 "free" 字串正確解析為 .free
     @Test
-    func fromAPIString_free() {
-        #expect(AntigravityPlan.fromAPIString("free") == .free)
+    func initFrom_free() {
+        #expect(AntigravityPlan(from: "free") == .free)
     }
 
     /// 驗證 "pro" 字串正確解析為 .pro
     @Test
-    func fromAPIString_pro() {
-        #expect(AntigravityPlan.fromAPIString("pro") == .pro)
+    func initFrom_pro() {
+        #expect(AntigravityPlan(from: "pro") == .pro)
     }
 
     /// 驗證傳入 nil 時回傳 nil
     @Test
-    func fromAPIString_nil_returnsNil() {
-        #expect(AntigravityPlan.fromAPIString(nil) == nil)
+    func initFrom_nil_returnsNil() {
+        #expect(AntigravityPlan(from: nil) == nil)
     }
 
     /// 驗證傳入空字串時回傳 nil
     @Test
-    func fromAPIString_empty_returnsNil() {
-        #expect(AntigravityPlan.fromAPIString("") == nil)
+    func initFrom_empty_returnsNil() {
+        #expect(AntigravityPlan(from: "") == nil)
     }
 
     /// 驗證傳入無法辨識的字串時回傳 nil
     @Test
-    func fromAPIString_unknown_returnsNil() {
-        #expect(AntigravityPlan.fromAPIString("enterprise") == nil)
-        #expect(AntigravityPlan.fromAPIString("max") == nil)
+    func initFrom_unknown_returnsNil() {
+        #expect(AntigravityPlan(from: "enterprise") == nil)
+        #expect(AntigravityPlan(from: "max") == nil)
     }
 
     /// 驗證字串比對不區分大小寫
     @Test
-    func fromAPIString_caseInsensitive() {
-        #expect(AntigravityPlan.fromAPIString("FREE") == .free)
-        #expect(AntigravityPlan.fromAPIString("Pro") == .pro)
-        #expect(AntigravityPlan.fromAPIString("PRO") == .pro)
+    func initFrom_caseInsensitive() {
+        #expect(AntigravityPlan(from: "FREE") == .free)
+        #expect(AntigravityPlan(from: "Pro") == .pro)
+        #expect(AntigravityPlan(from: "PRO") == .pro)
     }
 
     // MARK: - badgeLabel

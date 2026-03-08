@@ -22,7 +22,7 @@ extension UsageCommand {
 
         let user = try await apiClient.fetchUser(token)
         let status = try await apiClient.fetchCopilotStatus(token)
-        let plan = CopilotPlan.fromAPIString(status.copilotPlan)
+        let plan = CopilotPlan(from: status.copilotPlan)
         let daysUntilReset = DateUtils.daysUntilReset()
 
         // 免費方案與付費方案的用量摘要結構不同
@@ -30,7 +30,7 @@ extension UsageCommand {
         if plan == .free {
             summary = CopilotUsageSummary(
                 plan: plan,
-                planLimit: plan.limit,
+                planLimit: plan?.limit ?? 0,
                 daysUntilReset: daysUntilReset,
                 freeChatRemaining: status.limitedUserQuotas?.chat,
                 freeChatTotal: status.monthlyQuotas?.chat,
@@ -40,7 +40,7 @@ extension UsageCommand {
         } else {
             summary = CopilotUsageSummary(
                 plan: plan,
-                planLimit: plan.limit,
+                planLimit: plan?.limit ?? 0,
                 daysUntilReset: daysUntilReset,
                 premiumPercentRemaining: status.quotaSnapshots?.premiumInteractions?.percentRemaining,
             )
@@ -63,7 +63,7 @@ extension UsageCommand {
         print()
         print("  GitHub Copilot Usage")
         print("  User: \(user.name ?? user.login) (@\(user.login))")
-        print("  Plan: \(summary.plan.rawValue) (\(summary.planLimit) requests/month)")
+        print("  Plan: \(summary.plan?.rawValue ?? "Unknown") (\(summary.planLimit) requests/month)")
         print()
 
         if summary.isFreeTier {

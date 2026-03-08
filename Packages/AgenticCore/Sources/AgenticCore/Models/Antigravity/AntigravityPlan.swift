@@ -17,12 +17,11 @@ public enum AntigravityPlan: String, Sendable, Equatable {
     /// 從 API 回傳的方案類型字串解析為 ``AntigravityPlan``。
     ///
     /// - Parameter raw: API 回傳的方案類型字串，可為 `nil`。
-    /// - Returns: 對應的 ``AntigravityPlan`` 列舉值，或 `nil`。
-    public static func fromAPIString(_ raw: String?) -> AntigravityPlan? {
+    public init?(from raw: String?) {
         guard let raw, !raw.isEmpty else { return nil }
         switch raw.lowercased() {
-        case "free": return .free
-        case "pro": return .pro
+        case "free": self = .free
+        case "pro": self = .pro
         default: return nil
         }
     }
