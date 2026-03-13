@@ -173,7 +173,8 @@ struct CodexUsageSummaryTests {
     /// 驗證倒數時間僅有分鐘時回傳非 nil 且包含數字
     @Test
     func countdownString_minutesOnly() {
-        let future = Date().addingTimeInterval(45 * 60) // 45 minutes
+        // 多加 30 秒緩衝，避免因毫秒誤差導致分鐘少 1
+        let future = Date().addingTimeInterval(45 * 60 + 30)
         let result = future.countdownString
         #expect(result != nil)
         #expect(result!.contains("45"))
