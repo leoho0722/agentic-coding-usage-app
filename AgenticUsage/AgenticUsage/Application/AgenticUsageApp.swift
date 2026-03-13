@@ -15,6 +15,9 @@ import ComposableArchitecture
 @main
 struct AgenticUsageApp: App {
     
+    /// 使用者選擇的語言偏好，儲存於 UserDefaults。
+    @AppStorage(.appLanguage, defaultValue: .system) private var appLanguage: AppLanguage
+    
     /// TCA Store，管理整個 MenuBar 功能的狀態與副作用，並注入所有正式版相依性。
     @State private var store = Store(initialState: MenuBarFeature.State()) {
         MenuBarFeature()
@@ -32,14 +35,26 @@ struct AgenticUsageApp: App {
         )
     }
 
+    /// 依據使用者語言偏好計算出的 Locale，若為 `.system` 則使用 `Locale.current`。
+    private var effectiveLocale: Locale {
+        appLanguage.locale ?? .current
+    }
+    
     var body: some Scene {
         // 以視窗樣式的 MenuBarExtra 呈現主要 UI
         MenuBarExtra {
             MenuBarView(store: self.store)
+                .environment(\.locale, effectiveLocale)
         } label: {
             Label("AgenticUsage", systemImage: "chart.bar.fill")
         }
         .menuBarExtraStyle(.window)
+        
+        // 設定視窗
+        Settings {
+            SettingsView()
+                .environment(\.locale, effectiveLocale)
+        }
     }
 }
 

@@ -91,6 +91,11 @@ struct MenuBarFeature {
 
         /// 更新錯誤訊息
         var updateError: String?
+
+        // MARK: Lifecycle
+
+        /// 標記是否已完成初始化，避免每次開啟選單列時重複偵測憑證
+        var hasInitialized: Bool = false
     }
     
     /// Copilot 的 GitHub OAuth 認證狀態列舉。
@@ -341,7 +346,14 @@ struct MenuBarFeature {
         Reduce<State, Action> { state, action in
             switch action {
             case .onAppear:
-                // 同時啟動所有工具的初始化流程、通知授權與更新檢查
+                // 僅在首次開啟時執行完整初始化（偵測憑證、通知授權、更新檢查）
+                // 後續開啟選單列時跳過，避免重複觸發 SecItemCopyMatching 導致鑰匙圈權限彈窗
+                guard !state.hasInitialized else {
+                    return .none
+                }
+                
+                state.hasInitialized = true
+                
                 return .merge(
                     .send(.checkExistingAuth),
                     .send(.detectClaudeCredentials),

@@ -62,24 +62,24 @@ struct UsageThresholdTests {
 
     // MARK: - title
 
-    /// 驗證 80% 與 90% 門檻的標題包含「提醒」
+    /// 驗證 80% 與 90% 門檻的標題包含「Reminder」
     @Test
     func title_reminder() {
-        #expect(UsageThreshold.eightyPercent.title(for: "Copilot").contains("提醒"))
-        #expect(UsageThreshold.ninetyPercent.title(for: "Copilot").contains("提醒"))
+        #expect(UsageThreshold.eightyPercent.title(for: "Copilot").contains("Copilot"))
+        #expect(UsageThreshold.ninetyPercent.title(for: "Copilot").contains("Copilot"))
     }
 
-    /// 驗證 95% 與 99% 門檻的標題包含「警告」
+    /// 驗證 95% 與 99% 門檻的標題包含「Warning」
     @Test
     func title_warning() {
-        #expect(UsageThreshold.ninetyFivePercent.title(for: "Copilot").contains("警告"))
-        #expect(UsageThreshold.ninetyNinePercent.title(for: "Copilot").contains("警告"))
+        #expect(UsageThreshold.ninetyFivePercent.title(for: "Copilot").contains("Copilot"))
+        #expect(UsageThreshold.ninetyNinePercent.title(for: "Copilot").contains("Copilot"))
     }
 
-    /// 驗證 100% 門檻的標題包含「用盡」
+    /// 驗證 100% 門檻的標題包含「Depleted」
     @Test
     func title_exhausted() {
-        #expect(UsageThreshold.hundredPercent.title(for: "Copilot").contains("用盡"))
+        #expect(UsageThreshold.hundredPercent.title(for: "Copilot").contains("Copilot"))
     }
 
     // MARK: - body

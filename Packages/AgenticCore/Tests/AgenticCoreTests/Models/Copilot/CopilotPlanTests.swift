@@ -13,6 +13,12 @@ struct CopilotPlanTests {
         #expect(CopilotPlan(from: "copilot_for_individual_user") == .pro)
     }
 
+    /// 驗證 "individual" 字串正確解析為 .pro
+    @Test
+    func initFrom_individual_returnsPro() {
+        #expect(CopilotPlan(from: "individual") == .pro)
+    }
+
     /// 驗證 "copilot_for_individual_user_pro_plus" 字串正確解析為 .proPlus
     @Test
     func initFrom_individualUserProPlus_returnsProPlus() {

@@ -477,4 +477,19 @@ struct MenuBarFeatureTests {
             $0.antigravityErrorMessage = nil
         }
     }
+
+    // MARK: - onAppear: hasInitialized guard
+
+    /// 驗證第二次 onAppear 不觸發任何動作（hasInitialized guard）
+    @Test
+    func onAppear_secondTime_isNoOp() async {
+        var state = MenuBarFeature.State()
+        state.hasInitialized = true
+
+        let store = TestStore(initialState: state) {
+            MenuBarFeature()
+        }
+        await store.send(.onAppear)
+        // hasInitialized 為 true，不觸發任何子動作，也不變更狀態
+    }
 }

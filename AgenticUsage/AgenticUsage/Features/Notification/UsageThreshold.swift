@@ -37,11 +37,11 @@ enum UsageThreshold: Int, CaseIterable, Comparable, Sendable {
     func title(for toolName: String) -> String {
         switch self {
         case .eightyPercent, .ninetyPercent:
-            "\(toolName) 使用量提醒"
+            String(localized: "\(toolName) Usage Reminder")
         case .ninetyFivePercent, .ninetyNinePercent:
-            "\(toolName) 使用量警告"
+            String(localized: "\(toolName) Usage Warning")
         case .hundredPercent:
-            "\(toolName) 使用量已用盡"
+            String(localized: "\(toolName) Usage Depleted")
         }
     }
 
@@ -49,18 +49,18 @@ enum UsageThreshold: Int, CaseIterable, Comparable, Sendable {
     /// - Parameter usagePercent: 目前使用百分比
     /// - Returns: 通知內文字串
     func body(usagePercent: Int) -> String {
-        let pct = "已使用 \(usagePercent)%"
+        let pct = "\(usagePercent)%"
         switch self {
         case .eightyPercent:
-            return "\(pct)，悠著點用，額度不是無限的！"
+            return String(localized: "\(pct) used — Take it easy, your quota isn't unlimited!")
         case .ninetyPercent:
-            return "\(pct)，快見底了，省著點吧！"
+            return String(localized: "\(pct) used — Running low, better save some!")
         case .ninetyFivePercent:
-            return "\(pct)，只剩一點點了，三思而後 prompt！"
+            return String(localized: "\(pct) used — Almost gone, think twice before prompting!")
         case .ninetyNinePercent:
-            return "\(pct)，最後的倔強，且用且珍惜！"
+            return String(localized: "\(pct) used — Last stand, use wisely!")
         case .hundredPercent:
-            return "\(pct)，恭喜你把額度榨乾了，這個月的錢沒白花！"
+            return String(localized: "\(pct) used — Congrats, you've squeezed every last drop!")
         }
     }
 

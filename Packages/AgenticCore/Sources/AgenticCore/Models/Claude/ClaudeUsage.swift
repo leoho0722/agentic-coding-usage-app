@@ -234,7 +234,7 @@ extension ClaudeUsagePeriod {
         return formatter.date(from: resetsAt)
     }
     
-    /// 距離重置時間的倒數計時字串（例如 `"2h 30m"`、`"3d 5h"`）。
+    /// 距離重置時間的倒數計時字串（例如 `"2h 30m"`、`"3d 5h"`），自動依使用者語系本地化。
     public var resetCountdown: String? {
         guard let resetDate = resetsAtDate else {
             return nil
@@ -243,20 +243,23 @@ extension ClaudeUsagePeriod {
         guard resetDate > now else {
             return "now"
         }
-        
+
         let interval = resetDate.timeIntervalSince(now)
         let totalMinutes = Int(interval) / 60
         let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
-        
+
+        let formatter = DateComponentsFormatter()
+        formatter.unitsStyle = .abbreviated
+        formatter.zeroFormattingBehavior = .dropAll
+
         if hours >= 24 {
-            let days = hours / 24
-            let remainingHours = hours % 24
-            return "\(days)d \(remainingHours)h"
+            formatter.allowedUnits = [.day, .hour]
         } else if hours > 0 {
-            return "\(hours)h \(minutes)m"
+            formatter.allowedUnits = [.hour, .minute]
         } else {
-            return "\(minutes)m"
+            formatter.allowedUnits = [.minute]
         }
+
+        return formatter.string(from: interval)
     }
 }

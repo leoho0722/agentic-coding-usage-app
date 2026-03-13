@@ -33,7 +33,7 @@ public enum CopilotPlan: String, Sendable, Equatable {
     ///
     /// 已知的 API 值對應：
     /// - `"copilot_free"` 對應 `.free`
-    /// - `"copilot_for_individual_user"` 對應 `.pro`
+    /// - `"copilot_for_individual_user"` 或 `"individual"` 對應 `.pro`
     /// - `"copilot_for_individual_user_pro_plus"` 對應 `.proPlus`
     ///
     /// 無法辨識或為 `nil` 時回傳 `nil`。
@@ -43,7 +43,7 @@ public enum CopilotPlan: String, Sendable, Equatable {
         guard let raw, !raw.isEmpty else { return nil }
         switch raw.lowercased() {
         case "copilot_free": self = .free
-        case "copilot_for_individual_user": self = .pro
+        case "copilot_for_individual_user", "individual": self = .pro
         case "copilot_for_individual_user_pro_plus": self = .proPlus
         default: return nil
         }
