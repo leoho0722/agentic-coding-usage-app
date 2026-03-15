@@ -17,7 +17,7 @@ extension Bundle {
     ///   - key: Info.plist 中的鍵名
     /// - Returns: 對應的字串值，若不存在或型別不符則回傳 `nil`
     class func getValue(from bundle: Bundle, with key: String) -> String? {
-        return bundle.infoDictionary?[key] as? String
+        bundle.infoDictionary?[key] as? String
     }
 
     /// App 的簡短版本號（`CFBundleShortVersionString`），例如 "1.2.0"。

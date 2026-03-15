@@ -51,7 +51,7 @@ struct SettingsView: View {
 
             // MARK: 關於
             Section {
-                if let _ = store.updateInfo {
+                if store.updateInfo != nil {
                     LabeledContent("Version") {
                         Text("\(version) (\(Text("Update Available")))")
                     }

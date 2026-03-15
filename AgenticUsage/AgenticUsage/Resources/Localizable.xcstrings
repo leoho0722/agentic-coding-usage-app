@@ -14,6 +14,9 @@
     "@%@" : {
 
     },
+    "%@" : {
+
+    },
     "%@ (%@)" : {
       "localizations" : {
         "en" : {
@@ -43,6 +46,19 @@
           }
         }
       }
+    },
+    "%@ / %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "%@ / 1,000" : {
+
     },
     "%@ Usage Depleted" : {
       "localizations" : {
@@ -322,6 +338,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已停用"
+          }
+        }
+      }
+    },
+    "Dismiss error" : {
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關閉錯誤訊息"
+          }
+        }
+      }
+    },
+    "Dismiss update error" : {
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關閉更新錯誤訊息"
           }
         }
       }
