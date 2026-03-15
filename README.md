@@ -84,7 +84,7 @@ agentic-coding-usage-app/
 │   └── AgenticUsage/
 │       ├── Application/         # App lifecycle
 │       ├── Configuration/       # Build settings, secrets
-│       ├── Features/            # MenuBar, Notification, Settings
+│       ├── Features/            # MenuBar (Copilot, Claude, Codex, Antigravity), Notification, Settings
 │       ├── Services/            # Dependencies (TCA)
 │       ├── Resources/           # Assets
 │       └── Utilities/
