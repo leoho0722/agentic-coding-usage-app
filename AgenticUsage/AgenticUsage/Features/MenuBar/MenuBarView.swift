@@ -16,7 +16,11 @@ struct MenuBarView: View {
     
     /// 開啟設定視窗的動作
     @Environment(\.openSettings) private var openSettings
-    
+
+    /// 自動重新整理間隔，從 UserDefaults 讀取
+    @AppStorage(.refreshInterval, defaultValue: .seconds30)
+    private var refreshInterval: RefreshInterval
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // 頂部標題列：App 名稱 + 版本號
@@ -57,6 +61,12 @@ struct MenuBarView: View {
         .frame(width: 320)
         .task {
             await store.send(.onAppear).finish()
+        }
+        .onAppear {
+            store.send(.menuDidAppear(refreshInterval))
+        }
+        .onDisappear {
+            store.send(.menuDidDisappear)
         }
     }
     

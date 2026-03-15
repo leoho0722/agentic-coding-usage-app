@@ -15,7 +15,11 @@ struct SettingsView: View {
     /// 使用者選擇的語言偏好，儲存於 UserDefaults
     @AppStorage(.appLanguage, defaultValue: .system)
     private var appLanguage: AppLanguage
-    
+
+    /// 自動重新整理間隔，儲存於 UserDefaults
+    @AppStorage(.refreshInterval, defaultValue: .seconds30)
+    private var refreshInterval: RefreshInterval
+
     var body: some View {
         Form {
             // MARK: 一般設定
@@ -24,6 +28,12 @@ struct SettingsView: View {
                     ForEach(AppLanguage.allCases) { language in
                         Text(language.displayName)
                             .tag(language)
+                    }
+                }
+                Picker("Auto-Refresh Interval", selection: $refreshInterval) {
+                    ForEach(RefreshInterval.allCases) { interval in
+                        Text(interval.displayName)
+                            .tag(interval)
                     }
                 }
             } header: {
@@ -38,6 +48,6 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 350, height: 200)
+        .frame(width: 350, height: 250)
     }
 }

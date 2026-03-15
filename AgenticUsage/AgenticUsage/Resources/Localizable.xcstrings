@@ -133,6 +133,46 @@
     "|" : {
 
     },
+    "15 seconds" : {
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "15 秒"
+          }
+        }
+      }
+    },
+    "30 seconds" : {
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "30 秒"
+          }
+        }
+      }
+    },
+    "60 seconds" : {
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "60 秒"
+          }
+        }
+      }
+    },
+    "120 seconds" : {
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "120 秒"
+          }
+        }
+      }
+    },
     "About" : {
       "localizations" : {
         "zh-Hant" : {
@@ -145,6 +185,16 @@
     },
     "AgenticUsage" : {
 
+    },
+    "Auto-Refresh Interval" : {
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動重新整理間隔"
+          }
+        }
+      }
     },
     "Chat" : {
       "localizations" : {
@@ -252,6 +302,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "天後重設"
+          }
+        }
+      }
+    },
+    "Disabled" : {
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已停用"
           }
         }
       }
@@ -539,8 +599,7 @@
         }
       }
     },
-    "Version: %@" : {
-      "extractionState" : "stale",
+    "Version：%@" : {
       "localizations" : {
         "zh-Hant" : {
           "stringUnit" : {
@@ -549,9 +608,6 @@
           }
         }
       }
-    },
-    "Version：%@" : {
-
     },
     "Waiting for authorization..." : {
       "localizations" : {

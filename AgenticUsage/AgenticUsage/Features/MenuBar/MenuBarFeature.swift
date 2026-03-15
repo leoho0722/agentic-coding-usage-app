@@ -49,7 +49,10 @@ struct MenuBarFeature {
         
         /// Claude Code 相關的錯誤訊息
         var claudeErrorMessage: String?
-        
+
+        /// Claude Code 憑證快取，用於自動重新整理時跳過 loadCredentials()
+        var cachedClaudeCredentials: ClaudeOAuth?
+
         // MARK: Codex
 
         /// Codex 的連線狀態
@@ -63,6 +66,9 @@ struct MenuBarFeature {
 
         /// Codex 相關的錯誤訊息
         var codexErrorMessage: String?
+
+        /// Codex 憑證快取，用於自動重新整理時跳過 loadCredentials()
+        var cachedCodexCredentials: CodexOAuth?
 
         // MARK: Antigravity
 
@@ -96,6 +102,9 @@ struct MenuBarFeature {
 
         /// 標記是否已完成初始化，避免每次開啟選單列時重複偵測憑證
         var hasInitialized: Bool = false
+
+        /// 選單視窗是否可見，用於控制自動重新整理計時器
+        var isMenuVisible: Bool = false
     }
     
     /// Copilot 的 GitHub OAuth 認證狀態列舉。
@@ -195,14 +204,11 @@ struct MenuBarFeature {
         /// 開始擷取 Copilot 用量資料
         case fetchUsage
         
-        
         /// Copilot 用量回應成功
         case usageResponse(CopilotUsageSummary)
         
-        
         /// Copilot 用量擷取失敗
         case usageFailed(String)
-        
         
         /// 檢查 Copilot 用量是否達到通知門檻
         case checkUsageThresholds
@@ -215,14 +221,17 @@ struct MenuBarFeature {
         /// 手動重新擷取 Claude Code 用量
         case fetchClaudeUsage
         
-        /// Claude Code 用量回應成功
-        case claudeUsageResponse(ClaudeUsageSummary)
-        
+        /// Claude Code 用量回應成功，附帶已重新整理的憑證供快取
+        case claudeUsageResponse(ClaudeUsageSummary, ClaudeOAuth)
+
         /// Claude Code 用量擷取失敗
         case claudeUsageFailed(String)
-        
+
         /// 檢查 Claude Code 用量是否達到通知門檻
         case checkClaudeUsageThresholds
+
+        /// 自動重新整理 Claude Code 用量（使用快取憑證，跳過 loadCredentials）
+        case autoRefreshClaudeUsage
         
         // MARK: Codex
         
@@ -232,14 +241,17 @@ struct MenuBarFeature {
         /// 手動重新擷取 Codex 用量
         case fetchCodexUsage
         
-        /// Codex 用量回應成功
-        case codexUsageResponse(CodexUsageSummary)
-        
+        /// Codex 用量回應成功，附帶已重新整理的憑證供快取
+        case codexUsageResponse(CodexUsageSummary, CodexOAuth)
+
         /// Codex 用量擷取失敗
         case codexUsageFailed(String)
-        
+
         /// 檢查 Codex 用量是否達到通知門檻
         case checkCodexUsageThresholds
+
+        /// 自動重新整理 Codex 用量（使用快取憑證，跳過 loadCredentials）
+        case autoRefreshCodexUsage
 
         // MARK: Antigravity
 
@@ -307,6 +319,17 @@ struct MenuBarFeature {
         /// 關閉 Antigravity 錯誤訊息
         case dismissAntigravityError
 
+        // MARK: Auto-Refresh
+
+        /// 選單視窗開啟時觸發，附帶目前的重新整理間隔設定
+        case menuDidAppear(RefreshInterval)
+
+        /// 選單視窗關閉時觸發，停止自動重新整理計時器
+        case menuDidDisappear
+
+        /// 自動重新整理計時器觸發
+        case autoRefreshTick
+
         /// 結束應用程式
         case quitApp
     }
@@ -340,8 +363,19 @@ struct MenuBarFeature {
         return formatter.string(from: Date())
     }
     
+    // MARK: - CancelID
+
+    /// Effect 取消識別碼。
+    private enum CancelID {
+        case autoRefreshTimer
+    }
+
+    // MARK: - Dependencies
+
+    @Dependency(\.continuousClock) private var clock
+
     // MARK: - Reducer 主體
-    
+
     var body: some ReducerOf<Self> {
         Reduce<State, Action> { state, action in
             switch action {
@@ -552,7 +586,7 @@ struct MenuBarFeature {
             case .detectClaudeCredentials:
                 state.isClaudeLoading = true
                 state.claudeErrorMessage = nil
-                
+
                 // 1. 從本機載入憑證
                 // 2. 必要時重新整理存取權杖
                 // 3. 擷取用量資料
@@ -568,7 +602,7 @@ struct MenuBarFeature {
                         plan: ClaudePlan(from: refreshed.subscriptionType),
                         response: response
                     )
-                    await send(.claudeUsageResponse(summary))
+                    await send(.claudeUsageResponse(summary, refreshed))
                 } catch: { error, send in
                     if let apiError = error as? ClaudeAPIError {
                         switch apiError {
@@ -599,7 +633,7 @@ struct MenuBarFeature {
                         plan: ClaudePlan(from: refreshed.subscriptionType),
                         response: response
                     )
-                    await send(.claudeUsageResponse(summary))
+                    await send(.claudeUsageResponse(summary, refreshed))
                 } catch: { error, send in
                     if let apiError = error as? ClaudeAPIError {
                         switch apiError {
@@ -615,19 +649,21 @@ struct MenuBarFeature {
                     }
                 }
 
-            case let .claudeUsageResponse(summary):
+            case let .claudeUsageResponse(summary, credentials):
                 state.isClaudeLoading = false
                 state.claudeConnectionState = .connected(plan: summary.plan)
                 state.claudeUsageSummary = summary
+                state.cachedClaudeCredentials = credentials
                 return .send(.checkClaudeUsageThresholds)
                 
             case let .claudeUsageFailed(message):
                 state.isClaudeLoading = false
-                
+
                 // "notDetected" 為特殊標記，表示無本地憑證而非真正的錯誤
                 if message == "notDetected" {
                     state.claudeConnectionState = .notDetected
                     state.claudeErrorMessage = nil
+                    state.cachedClaudeCredentials = nil
                 } else {
                     state.claudeErrorMessage = message
                 }
@@ -706,7 +742,7 @@ struct MenuBarFeature {
                         refreshed.accessToken, refreshed.accountId
                     )
                     let summary = CodexUsageSummary(headers: headers, response: response)
-                    await send(.codexUsageResponse(summary))
+                    await send(.codexUsageResponse(summary, refreshed))
                 } catch: { error, send in
                     // 收到 401 時，嘗試強制重新整理權杖後重試
                     if let apiError = error as? CodexAPIError,
@@ -717,7 +753,7 @@ struct MenuBarFeature {
                         await send(.codexUsageFailed(error.localizedDescription))
                     }
                 }
-                
+
             case .fetchCodexUsage:
                 state.isCodexLoading = true
                 state.codexErrorMessage = nil
@@ -732,23 +768,25 @@ struct MenuBarFeature {
                         refreshed.accessToken, refreshed.accountId
                     )
                     let summary = CodexUsageSummary(headers: headers, response: response)
-                    await send(.codexUsageResponse(summary))
+                    await send(.codexUsageResponse(summary, refreshed))
                 } catch: { error, send in
                     await send(.codexUsageFailed(error.localizedDescription))
                 }
                 
-            case let .codexUsageResponse(summary):
+            case let .codexUsageResponse(summary, credentials):
                 state.isCodexLoading = false
                 state.codexConnectionState = .connected(plan: summary.plan)
                 state.codexUsageSummary = summary
+                state.cachedCodexCredentials = credentials
                 return .send(.checkCodexUsageThresholds)
                 
             case let .codexUsageFailed(message):
                 state.isCodexLoading = false
-                
+
                 if message == "notDetected" {
                     state.codexConnectionState = .notDetected
                     state.codexErrorMessage = nil
+                    state.cachedCodexCredentials = nil
                 } else {
                     state.codexErrorMessage = message
                 }
@@ -1001,6 +1039,77 @@ struct MenuBarFeature {
                 state.antigravityErrorMessage = nil
                 return .none
 
+                // MARK: - Auto-Refresh
+
+            case let .menuDidAppear(interval):
+                state.isMenuVisible = true
+
+                guard let duration = interval.duration else {
+                    // disabled — 僅立即刷新一次，不啟動計時器
+                    return refreshConnectedServices(state: state)
+                }
+
+                return .merge(
+                    refreshConnectedServices(state: state),
+                    .run { send in
+                        for await _ in self.clock.timer(interval: duration) {
+                            await send(.autoRefreshTick)
+                        }
+                    }
+                    .cancellable(id: CancelID.autoRefreshTimer, cancelInFlight: true)
+                )
+
+            case .menuDidDisappear:
+                state.isMenuVisible = false
+                return .cancel(id: CancelID.autoRefreshTimer)
+
+            case .autoRefreshClaudeUsage:
+                guard let cached = state.cachedClaudeCredentials else { return .none }
+                state.isClaudeLoading = true
+                state.claudeErrorMessage = nil
+                return .run { [cached] send in
+                    @Dependency(\.claudeAPIClient) var claudeClient
+                    let refreshed = try await claudeClient.refreshTokenIfNeeded(cached)
+                    let response = try await claudeClient.fetchUsage(refreshed.accessToken)
+                    let summary = ClaudeUsageSummary(
+                        plan: ClaudePlan(from: refreshed.subscriptionType),
+                        response: response
+                    )
+                    await send(.claudeUsageResponse(summary, refreshed))
+                } catch: { error, send in
+                    if let apiError = error as? ClaudeAPIError {
+                        switch apiError {
+                        case .refreshFailed(let statusCode, _) where statusCode == 400:
+                            await send(.claudeUsageFailed("notDetected"))
+                        case .insufficientScope:
+                            await send(.claudeUsageFailed("notDetected"))
+                        default:
+                            await send(.claudeUsageFailed(error.localizedDescription))
+                        }
+                    } else {
+                        await send(.claudeUsageFailed(error.localizedDescription))
+                    }
+                }
+
+            case .autoRefreshCodexUsage:
+                guard let cached = state.cachedCodexCredentials else { return .none }
+                state.isCodexLoading = true
+                state.codexErrorMessage = nil
+                return .run { [cached] send in
+                    @Dependency(\.codexAPIClient) var codexClient
+                    let refreshed = try await codexClient.refreshTokenIfNeeded(cached)
+                    let (headers, response) = try await codexClient.fetchUsage(
+                        refreshed.accessToken, refreshed.accountId
+                    )
+                    let summary = CodexUsageSummary(headers: headers, response: response)
+                    await send(.codexUsageResponse(summary, refreshed))
+                } catch: { error, send in
+                    await send(.codexUsageFailed(error.localizedDescription))
+                }
+
+            case .autoRefreshTick:
+                return refreshConnectedServices(state: state)
+
             case .quitApp:
                 return .run { _ in
                     await MainActor.run {
@@ -1009,5 +1118,38 @@ struct MenuBarFeature {
                 }
             }
         }
+    }
+
+    // MARK: - Private Helpers
+
+    /// 刷新所有已連線且非載入中的服務用量。
+    private func refreshConnectedServices(state: State) -> Effect<Action> {
+        var effects: [Effect<Action>] = []
+
+        // Copilot: 已登入且未載入中
+        if state.authState.accessToken != nil, !state.isLoading {
+            effects.append(.send(.fetchUsage))
+        }
+
+        // Claude Code: 已連線、非載入中、有快取憑證 → 使用快取跳過 loadCredentials
+        if case .connected = state.claudeConnectionState,
+           !state.isClaudeLoading,
+           state.cachedClaudeCredentials != nil {
+            effects.append(.send(.autoRefreshClaudeUsage))
+        }
+
+        // Codex: 已連線、非載入中、有快取憑證 → 使用快取跳過 loadCredentials
+        if case .connected = state.codexConnectionState,
+           !state.isCodexLoading,
+           state.cachedCodexCredentials != nil {
+            effects.append(.send(.autoRefreshCodexUsage))
+        }
+
+        // Antigravity: 已連線且未載入中
+        if case .connected = state.antigravityConnectionState, !state.isAntigravityLoading {
+            effects.append(.send(.fetchAntigravityUsage))
+        }
+
+        return effects.isEmpty ? .none : .merge(effects)
     }
 }

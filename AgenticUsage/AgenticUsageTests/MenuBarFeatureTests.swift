@@ -7,7 +7,7 @@ import Testing
 @testable import AgenticUsage
 
 @MainActor
-@Suite("MenuBarFeature")
+@Suite("MenuBarFeature", .serialized)
 struct MenuBarFeatureTests {
 
     // MARK: - Copilot: loginCompleted
@@ -143,12 +143,13 @@ struct MenuBarFeatureTests {
 
     // MARK: - Claude
 
-    /// 驗證 Claude 使用量回應後設定 connected 狀態與 summary
+    /// 驗證 Claude 使用量回應後設定 connected 狀態與 summary，並快取憑證
     @Test
     func claudeUsageResponse_setsConnectedState() async {
         let store = TestStore(initialState: MenuBarFeature.State()) {
             MenuBarFeature()
         }
+        let credentials = ClaudeOAuth(accessToken: "tok", subscriptionType: "pro")
         let summary = ClaudeUsageSummary(
             plan: .pro,
             response: ClaudeUsageResponse(
@@ -156,20 +157,22 @@ struct MenuBarFeatureTests {
                 sevenDay: ClaudeUsagePeriod(utilization: 50.0, resetsAt: nil)
             )
         )
-        await store.send(.claudeUsageResponse(summary)) {
+        await store.send(.claudeUsageResponse(summary, credentials)) {
             $0.isClaudeLoading = false
             $0.claudeConnectionState = .connected(plan: .pro)
             $0.claudeUsageSummary = summary
+            $0.cachedClaudeCredentials = credentials
         }
         await store.receive(\.checkClaudeUsageThresholds)
     }
 
-    /// 驗證 Claude 使用量失敗且為 notDetected 時重設連線狀態
+    /// 驗證 Claude 使用量失敗且為 notDetected 時重設連線狀態並清除快取
     @Test
     func claudeUsageFailed_notDetected_resetsState() async {
         var state = MenuBarFeature.State()
         state.isClaudeLoading = true
         state.claudeConnectionState = .connected(plan: .pro)
+        state.cachedClaudeCredentials = ClaudeOAuth(accessToken: "old")
 
         let store = TestStore(initialState: state) {
             MenuBarFeature()
@@ -178,6 +181,7 @@ struct MenuBarFeatureTests {
             $0.isClaudeLoading = false
             $0.claudeConnectionState = .notDetected
             $0.claudeErrorMessage = nil
+            $0.cachedClaudeCredentials = nil
         }
     }
 
@@ -198,29 +202,32 @@ struct MenuBarFeatureTests {
 
     // MARK: - Codex
 
-    /// 驗證 Codex 使用量回應後設定 connected 狀態與 summary
+    /// 驗證 Codex 使用量回應後設定 connected 狀態與 summary，並快取憑證
     @Test
     func codexUsageResponse_setsConnectedState() async {
         let store = TestStore(initialState: MenuBarFeature.State()) {
             MenuBarFeature()
         }
+        let credentials = CodexOAuth(accessToken: "tok", accountId: "acc1")
         let summary = CodexUsageSummary(
             headers: CodexUsageHeaders(primaryUsedPercent: 30.0),
             response: CodexUsageResponse(planType: "plus")
         )
-        await store.send(.codexUsageResponse(summary)) {
+        await store.send(.codexUsageResponse(summary, credentials)) {
             $0.isCodexLoading = false
             $0.codexConnectionState = .connected(plan: .plus)
             $0.codexUsageSummary = summary
+            $0.cachedCodexCredentials = credentials
         }
         await store.receive(\.checkCodexUsageThresholds)
     }
 
-    /// 驗證 Codex 使用量失敗且為 notDetected 時重設連線狀態
+    /// 驗證 Codex 使用量失敗且為 notDetected 時重設連線狀態並清除快取
     @Test
     func codexUsageFailed_notDetected() async {
         var state = MenuBarFeature.State()
         state.isCodexLoading = true
+        state.cachedCodexCredentials = CodexOAuth(accessToken: "old")
 
         let store = TestStore(initialState: state) {
             MenuBarFeature()
@@ -229,6 +236,7 @@ struct MenuBarFeatureTests {
             $0.isCodexLoading = false
             $0.codexConnectionState = .notDetected
             $0.codexErrorMessage = nil
+            $0.cachedCodexCredentials = nil
         }
     }
 
@@ -491,5 +499,337 @@ struct MenuBarFeatureTests {
         }
         await store.send(.onAppear)
         // hasInitialized 為 true，不觸發任何子動作，也不變更狀態
+    }
+
+    // MARK: - Auto-Refresh
+
+    /// 驗證 menuDidAppear 設定 isMenuVisible 並立即刷新已連線服務 + 啟動計時器
+    @Test
+    func menuDidAppear_refreshesAndStartsTimer() async {
+        let testClock = TestClock()
+
+        var state = MenuBarFeature.State()
+        state.authState = .loggedIn(user: GitHubUser(login: "test"), accessToken: "tok")
+
+        let store = TestStore(initialState: state) {
+            MenuBarFeature()
+        } withDependencies: {
+            $0.continuousClock = testClock
+            $0.gitHubAPIClient = GitHubAPIClient(
+                fetchUser: { _ in GitHubUser(login: "test") },
+                fetchCopilotStatus: { _ in CopilotStatusResponse(copilotPlan: "copilot_for_individual_user") }
+            )
+        }
+
+        await store.send(.menuDidAppear(.seconds30)) {
+            $0.isMenuVisible = true
+        }
+
+        // 立即刷新：Copilot fetchUsage
+        await store.receive(\.fetchUsage) {
+            $0.isLoading = true
+            $0.errorMessage = nil
+        }
+
+        // Copilot 用量回應
+        await store.receive(\.usageResponse) {
+            $0.isLoading = false
+            $0.usageSummary = CopilotUsageSummary(
+                plan: .pro, planLimit: 300, daysUntilReset: DateUtils.daysUntilReset(),
+                premiumPercentRemaining: nil
+            )
+            $0.detectedPlan = .pro
+        }
+        await store.receive(\.checkUsageThresholds)
+
+        // 關閉選單以取消計時器
+        await store.send(.menuDidDisappear) {
+            $0.isMenuVisible = false
+        }
+    }
+
+    /// 驗證 menuDidDisappear 取消計時器
+    @Test
+    func menuDidDisappear_cancelsTimer() async {
+        var state = MenuBarFeature.State()
+        state.isMenuVisible = true
+
+        let store = TestStore(initialState: state) {
+            MenuBarFeature()
+        }
+        await store.send(.menuDidDisappear) {
+            $0.isMenuVisible = false
+        }
+    }
+
+    /// 驗證 autoRefreshTick 僅刷新已連線且非載入中的服務
+    @Test
+    func autoRefreshTick_onlyRefreshesConnectedNonLoading() async {
+        var state = MenuBarFeature.State()
+        
+        // Copilot: 已登入，非載入中 → 應刷新
+        state.authState = .loggedIn(user: GitHubUser(login: "test"), accessToken: "tok")
+        state.isLoading = false
+        
+        // Claude: 已連線，但正在載入中 → 不應刷新
+        state.claudeConnectionState = .connected(plan: .pro)
+        state.isClaudeLoading = true
+        
+        // Codex: 未連線 → 不應刷新
+        state.codexConnectionState = .notDetected
+
+        let store = TestStore(initialState: state) {
+            MenuBarFeature()
+        } withDependencies: {
+            $0.gitHubAPIClient = GitHubAPIClient(
+                fetchUser: { _ in GitHubUser(login: "test") },
+                fetchCopilotStatus: { _ in CopilotStatusResponse(copilotPlan: "copilot_for_individual_user") }
+            )
+        }
+
+        await store.send(.autoRefreshTick)
+
+        // 僅 Copilot 被刷新
+        await store.receive(\.fetchUsage) {
+            $0.isLoading = true
+            $0.errorMessage = nil
+        }
+        await store.receive(\.usageResponse) {
+            $0.isLoading = false
+            $0.usageSummary = CopilotUsageSummary(
+                plan: .pro, planLimit: 300, daysUntilReset: DateUtils.daysUntilReset(),
+                premiumPercentRemaining: nil
+            )
+            $0.detectedPlan = .pro
+        }
+        await store.receive(\.checkUsageThresholds)
+    }
+
+    /// 驗證 refreshInterval 為 disabled 時不啟動計時器
+    @Test
+    func menuDidAppear_disabled_noTimer() async {
+        var state = MenuBarFeature.State()
+        state.authState = .loggedIn(user: GitHubUser(login: "test"), accessToken: "tok")
+
+        let store = TestStore(initialState: state) {
+            MenuBarFeature()
+        } withDependencies: {
+            $0.gitHubAPIClient = GitHubAPIClient(
+                fetchUser: { _ in GitHubUser(login: "test") },
+                fetchCopilotStatus: { _ in CopilotStatusResponse(copilotPlan: "copilot_for_individual_user") }
+            )
+        }
+
+        await store.send(.menuDidAppear(.disabled)) {
+            $0.isMenuVisible = true
+        }
+
+        // 僅立即刷新一次，不啟動計時器
+        await store.receive(\.fetchUsage) {
+            $0.isLoading = true
+            $0.errorMessage = nil
+        }
+        await store.receive(\.usageResponse) {
+            $0.isLoading = false
+            $0.usageSummary = CopilotUsageSummary(
+                plan: .pro, planLimit: 300, daysUntilReset: DateUtils.daysUntilReset(),
+                premiumPercentRemaining: nil
+            )
+            $0.detectedPlan = .pro
+        }
+        await store.receive(\.checkUsageThresholds)
+        // 無計時器 → 不需要 menuDidDisappear 來取消
+    }
+
+    /// 驗證 autoRefreshClaudeUsage 使用快取憑證，不呼叫 loadCredentials
+    @Test
+    func autoRefreshClaudeUsage_usesCachedCredentials() async {
+        let cachedCredentials = ClaudeOAuth(accessToken: "cached-tok", subscriptionType: "pro")
+
+        var state = MenuBarFeature.State()
+        state.claudeConnectionState = .connected(plan: .pro)
+        state.cachedClaudeCredentials = cachedCredentials
+
+        let store = TestStore(initialState: state) {
+            MenuBarFeature()
+        } withDependencies: {
+            $0.claudeAPIClient = ClaudeAPIClient(
+                loadCredentials: { fatalError("loadCredentials 不應被呼叫") },
+                refreshTokenIfNeeded: { current in current },
+                fetchUsage: { _ in
+                    ClaudeUsageResponse(
+                        fiveHour: ClaudeUsagePeriod(utilization: 30.0, resetsAt: nil),
+                        sevenDay: ClaudeUsagePeriod(utilization: 50.0, resetsAt: nil)
+                    )
+                }
+            )
+        }
+
+        await store.send(.autoRefreshClaudeUsage) {
+            $0.isClaudeLoading = true
+            $0.claudeErrorMessage = nil
+        }
+
+        let expectedSummary = ClaudeUsageSummary(
+            plan: .pro,
+            response: ClaudeUsageResponse(
+                fiveHour: ClaudeUsagePeriod(utilization: 30.0, resetsAt: nil),
+                sevenDay: ClaudeUsagePeriod(utilization: 50.0, resetsAt: nil)
+            )
+        )
+        await store.receive(\.claudeUsageResponse) {
+            $0.isClaudeLoading = false
+            $0.claudeConnectionState = .connected(plan: .pro)
+            $0.claudeUsageSummary = expectedSummary
+            $0.cachedClaudeCredentials = cachedCredentials
+        }
+        await store.receive(\.checkClaudeUsageThresholds)
+    }
+
+    /// 驗證 autoRefreshCodexUsage 使用快取憑證，不呼叫 loadCredentials
+    @Test
+    func autoRefreshCodexUsage_usesCachedCredentials() async {
+        let cachedCredentials = CodexOAuth(accessToken: "cached-tok", accountId: "acc1")
+
+        var state = MenuBarFeature.State()
+        state.codexConnectionState = .connected(plan: .plus)
+        state.cachedCodexCredentials = cachedCredentials
+
+        let store = TestStore(initialState: state) {
+            MenuBarFeature()
+        } withDependencies: {
+            $0.codexAPIClient = CodexAPIClient(
+                loadCredentials: { fatalError("loadCredentials 不應被呼叫") },
+                refreshTokenIfNeeded: { current in current },
+                fetchUsage: { _, _ in
+                    (
+                        CodexUsageHeaders(primaryUsedPercent: 30.0),
+                        CodexUsageResponse(planType: "plus")
+                    )
+                }
+            )
+        }
+
+        await store.send(.autoRefreshCodexUsage) {
+            $0.isCodexLoading = true
+            $0.codexErrorMessage = nil
+        }
+
+        let expectedSummary = CodexUsageSummary(
+            headers: CodexUsageHeaders(primaryUsedPercent: 30.0),
+            response: CodexUsageResponse(planType: "plus")
+        )
+        await store.receive(\.codexUsageResponse) {
+            $0.isCodexLoading = false
+            $0.codexConnectionState = .connected(plan: .plus)
+            $0.codexUsageSummary = expectedSummary
+            $0.cachedCodexCredentials = cachedCredentials
+        }
+        await store.receive(\.checkCodexUsageThresholds)
+    }
+
+    /// 驗證 autoRefreshClaudeUsage 無快取憑證時不執行任何動作
+    @Test
+    func autoRefreshClaudeUsage_noCachedCredentials_isNoOp() async {
+        var state = MenuBarFeature.State()
+        state.claudeConnectionState = .connected(plan: .pro)
+        state.cachedClaudeCredentials = nil
+
+        let store = TestStore(initialState: state) {
+            MenuBarFeature()
+        }
+        await store.send(.autoRefreshClaudeUsage)
+    }
+
+    /// 驗證 autoRefreshCodexUsage 無快取憑證時不執行任何動作
+    @Test
+    func autoRefreshCodexUsage_noCachedCredentials_isNoOp() async {
+        var state = MenuBarFeature.State()
+        state.codexConnectionState = .connected(plan: .plus)
+        state.cachedCodexCredentials = nil
+
+        let store = TestStore(initialState: state) {
+            MenuBarFeature()
+        }
+        await store.send(.autoRefreshCodexUsage)
+    }
+
+    /// 驗證 autoRefreshTick 對有快取憑證的 Claude 使用 autoRefreshClaudeUsage
+    @Test
+    func autoRefreshTick_usesCachedCredentialsForClaude() async {
+        let cachedCredentials = ClaudeOAuth(accessToken: "cached", subscriptionType: "pro")
+
+        var state = MenuBarFeature.State()
+        state.claudeConnectionState = .connected(plan: .pro)
+        state.cachedClaudeCredentials = cachedCredentials
+        state.isClaudeLoading = false
+
+        let store = TestStore(initialState: state) {
+            MenuBarFeature()
+        } withDependencies: {
+            $0.claudeAPIClient = ClaudeAPIClient(
+                loadCredentials: { fatalError("不應被呼叫") },
+                refreshTokenIfNeeded: { current in current },
+                fetchUsage: { _ in
+                    ClaudeUsageResponse(
+                        fiveHour: ClaudeUsagePeriod(utilization: 20.0, resetsAt: nil),
+                        sevenDay: ClaudeUsagePeriod(utilization: 40.0, resetsAt: nil)
+                    )
+                }
+            )
+        }
+
+        await store.send(.autoRefreshTick)
+
+        await store.receive(\.autoRefreshClaudeUsage) {
+            $0.isClaudeLoading = true
+            $0.claudeErrorMessage = nil
+        }
+
+        let expectedSummary = ClaudeUsageSummary(
+            plan: .pro,
+            response: ClaudeUsageResponse(
+                fiveHour: ClaudeUsagePeriod(utilization: 20.0, resetsAt: nil),
+                sevenDay: ClaudeUsagePeriod(utilization: 40.0, resetsAt: nil)
+            )
+        )
+        await store.receive(\.claudeUsageResponse) {
+            $0.isClaudeLoading = false
+            $0.claudeConnectionState = .connected(plan: .pro)
+            $0.claudeUsageSummary = expectedSummary
+            $0.cachedClaudeCredentials = cachedCredentials
+        }
+        await store.receive(\.checkClaudeUsageThresholds)
+    }
+
+    /// 驗證手動重新整理不受 auto-refresh 計時器影響
+    @Test
+    func manualRefresh_worksIndependently() async {
+        var state = MenuBarFeature.State()
+        state.authState = .loggedIn(user: GitHubUser(login: "test"), accessToken: "tok")
+        state.isMenuVisible = true
+
+        let store = TestStore(initialState: state) {
+            MenuBarFeature()
+        } withDependencies: {
+            $0.gitHubAPIClient = GitHubAPIClient(
+                fetchUser: { _ in GitHubUser(login: "test") },
+                fetchCopilotStatus: { _ in CopilotStatusResponse(copilotPlan: "copilot_for_individual_user") }
+            )
+        }
+
+        await store.send(.fetchUsage) {
+            $0.isLoading = true
+            $0.errorMessage = nil
+        }
+        await store.receive(\.usageResponse) {
+            $0.isLoading = false
+            $0.usageSummary = CopilotUsageSummary(
+                plan: .pro, planLimit: 300, daysUntilReset: DateUtils.daysUntilReset(),
+                premiumPercentRemaining: nil
+            )
+            $0.detectedPlan = .pro
+        }
+        await store.receive(\.checkUsageThresholds)
     }
 }

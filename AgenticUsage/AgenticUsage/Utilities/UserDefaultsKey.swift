@@ -14,4 +14,7 @@ enum UserDefaultsKey: String, Sendable {
     
     /// 使用者選擇的顯示語言
     case appLanguage
+
+    /// 自動重新整理間隔
+    case refreshInterval
 }
