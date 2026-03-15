@@ -24,6 +24,7 @@
 - OAuth 認證流程
 - 透過 macOS 鑰匙圈安全儲存 Token
 - 使用量通知
+- 多語系支援（English、繁體中文）
 
 ### CLI 工具（`agentic`）
 
@@ -84,7 +85,15 @@ agentic-coding-usage-app/
 │   └── AgenticUsage/
 │       ├── Application/         # 應用程式生命週期
 │       ├── Configuration/       # 建構設定、密鑰
-│       ├── Features/            # MenuBar（Copilot、Claude、Codex、Antigravity）、Notification、Settings
+│       ├── Features/
+│       │   ├── MenuBar/         # Reducer + Views
+│       │   │   ├── SharedViews/ # 共用 View 元件
+│       │   │   ├── Copilot/     # Copilot 視圖
+│       │   │   ├── Claude/      # Claude 視圖
+│       │   │   ├── Codex/       # Codex 視圖
+│       │   │   └── Antigravity/ # Antigravity 視圖
+│       │   ├── Notification/    # 使用量通知
+│       │   └── Settings/        # 應用程式設定
 │       ├── Services/            # 依賴注入（TCA）
 │       ├── Resources/           # 資源檔
 │       └── Utilities/

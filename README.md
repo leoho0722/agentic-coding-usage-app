@@ -24,6 +24,7 @@ Inspired by the open-source project [**OpenUsage**](https://github.com/robineber
 - OAuth authentication flow
 - Secure token storage via macOS Keychain
 - Usage notifications
+- Multi-language support (English, Traditional Chinese)
 
 ### CLI Tool (`agentic`)
 
@@ -84,7 +85,15 @@ agentic-coding-usage-app/
 │   └── AgenticUsage/
 │       ├── Application/         # App lifecycle
 │       ├── Configuration/       # Build settings, secrets
-│       ├── Features/            # MenuBar (Copilot, Claude, Codex, Antigravity), Notification, Settings
+│       ├── Features/
+│       │   ├── MenuBar/         # Reducer + Views
+│       │   │   ├── SharedViews/ # Shared view components
+│       │   │   ├── Copilot/     # Copilot views
+│       │   │   ├── Claude/      # Claude views
+│       │   │   ├── Codex/       # Codex views
+│       │   │   └── Antigravity/ # Antigravity views
+│       │   ├── Notification/    # Usage notifications
+│       │   └── Settings/        # App settings
 │       ├── Services/            # Dependencies (TCA)
 │       ├── Resources/           # Assets
 │       └── Utilities/
