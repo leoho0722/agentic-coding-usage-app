@@ -19,7 +19,7 @@ jobs:
     runs-on: macos-15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Run AgenticCore unit tests
         run: swift test
@@ -30,7 +30,7 @@ jobs:
     runs-on: macos-15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Build AgenticCLI
         run: swift build
@@ -41,7 +41,7 @@ jobs:
     runs-on: macos-15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Generate Secrets.xcconfig from template
         run: cp AgenticUsage/Configuration/Secrets.xcconfig.template AgenticUsage/Configuration/Secrets.xcconfig
