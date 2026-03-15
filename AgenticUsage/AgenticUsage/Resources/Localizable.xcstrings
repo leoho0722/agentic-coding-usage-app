@@ -14,6 +14,16 @@
     "@%@" : {
 
     },
+    "%@ (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ (%2$@)"
+          }
+        }
+      }
+    },
     "%@ (5h)" : {
       "localizations" : {
         "zh-Hant" : {
@@ -545,6 +555,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "系統預設"
+          }
+        }
+      }
+    },
+    "Up to Date" : {
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已經是最新版了"
+          }
+        }
+      }
+    },
+    "Update Available" : {
+      "localizations" : {
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有可更新的版本"
           }
         }
       }

@@ -87,6 +87,11 @@ struct MenuBarFeature {
         /// 目前展開的工具卡片（手風琴），預設為 Copilot
         var expandedTool: ToolKind? = .copilot
 
+        // MARK: Settings
+
+        /// Settings 子功能狀態
+        var settings: SettingsFeature.State = SettingsFeature.State()
+
         // MARK: Update
 
         /// 檢查到的更新資訊（nil = 無更新或尚未檢查）
@@ -332,6 +337,11 @@ struct MenuBarFeature {
 
         /// 結束應用程式
         case quitApp
+
+        // MARK: Settings
+
+        /// Settings 子功能動作
+        case settings(SettingsFeature.Action)
     }
     
     // MARK: - 常數
@@ -377,6 +387,9 @@ struct MenuBarFeature {
     // MARK: - Reducer 主體
 
     var body: some ReducerOf<Self> {
+        Scope(state: \.settings, action: \.settings) {
+            SettingsFeature()
+        }
         Reduce<State, Action> { state, action in
             switch action {
             case .onAppear:
@@ -945,10 +958,12 @@ struct MenuBarFeature {
 
             case let .updateAvailable(info):
                 state.updateInfo = info
+                state.settings.updateInfo = info
                 return .none
 
             case .updateNotAvailable:
                 state.updateInfo = nil
+                state.settings.updateInfo = nil
                 return .none
 
             case .updateCheckFailed:
@@ -958,6 +973,7 @@ struct MenuBarFeature {
             case .performUpdate:
                 guard let info = state.updateInfo else { return .none }
                 state.isUpdating = true
+                state.settings.isUpdating = true
                 state.updateError = nil
                 return .run { send in
                     @Dependency(\.updateClient) var updateClient
@@ -970,6 +986,7 @@ struct MenuBarFeature {
 
             case .updateCompleted:
                 state.isUpdating = false
+                state.settings.isUpdating = false
                 // 重啟 App：先啟動延遲 shell 再立即結束自己
                 return .run { _ in
                     @Dependency(\.updateClient) var updateClient
@@ -982,6 +999,7 @@ struct MenuBarFeature {
 
             case let .updateFailed(message):
                 state.isUpdating = false
+                state.settings.isUpdating = false
                 state.updateError = message
                 return .none
 
@@ -1116,6 +1134,11 @@ struct MenuBarFeature {
                         NSApplication.shared.terminate(nil)
                     }
                 }
+
+            // MARK: - Settings
+
+            case .settings(.performUpdate):
+                return .send(.performUpdate)
             }
         }
     }

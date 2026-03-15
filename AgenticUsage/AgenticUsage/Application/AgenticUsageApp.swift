@@ -52,7 +52,7 @@ struct AgenticUsageApp: App {
         
         // 設定視窗
         Settings {
-            SettingsView()
+            SettingsView(store: store.scope(state: \.settings, action: \.settings))
                 .environment(\.locale, effectiveLocale)
         }
     }

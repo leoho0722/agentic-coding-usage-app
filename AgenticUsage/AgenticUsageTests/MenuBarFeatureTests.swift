@@ -330,6 +330,7 @@ struct MenuBarFeatureTests {
         )
         await store.send(.updateAvailable(info)) {
             $0.updateInfo = info
+            $0.settings.updateInfo = info
         }
     }
 
@@ -340,18 +341,21 @@ struct MenuBarFeatureTests {
             tagName: "v2.0.0", name: "v2.0.0", body: "Changes",
             htmlUrl: "https://github.com/test/releases/tag/v2.0.0", assets: []
         )
-        var state = MenuBarFeature.State()
-        state.updateInfo = UpdateInfo(
+        let info = UpdateInfo(
             currentVersion: SemanticVersion("1.0.0")!,
             latestVersion: SemanticVersion("2.0.0")!,
             release: release
         )
+        var state = MenuBarFeature.State()
+        state.updateInfo = info
+        state.settings.updateInfo = info
 
         let store = TestStore(initialState: state) {
             MenuBarFeature()
         }
         await store.send(.updateNotAvailable) {
             $0.updateInfo = nil
+            $0.settings.updateInfo = nil
         }
     }
 
@@ -360,12 +364,14 @@ struct MenuBarFeatureTests {
     func updateFailed_setsError() async {
         var state = MenuBarFeature.State()
         state.isUpdating = true
+        state.settings.isUpdating = true
 
         let store = TestStore(initialState: state) {
             MenuBarFeature()
         }
         await store.send(.updateFailed("Download failed")) {
             $0.isUpdating = false
+            $0.settings.isUpdating = false
             $0.updateError = "Download failed"
         }
     }
@@ -381,6 +387,48 @@ struct MenuBarFeatureTests {
         }
         await store.send(.dismissUpdateError) {
             $0.updateError = nil
+        }
+    }
+
+    // MARK: - Settings
+
+    /// 驗證 Settings 子功能的 performUpdate 動作轉發至父層
+    @Test
+    func settings_performUpdate_forwardsToParent() async {
+        let release = GitHubRelease(
+            tagName: "v2.0.0", name: "v2.0.0", body: "Changes",
+            htmlUrl: "https://github.com/test/releases/tag/v2.0.0", assets: []
+        )
+        let info = UpdateInfo(
+            currentVersion: SemanticVersion("1.0.0")!,
+            latestVersion: SemanticVersion("2.0.0")!,
+            release: release
+        )
+        var state = MenuBarFeature.State()
+        state.updateInfo = info
+        state.settings.updateInfo = info
+
+        let store = TestStore(initialState: state) {
+            MenuBarFeature()
+        } withDependencies: {
+            $0.updateClient = .init(
+                checkForUpdate: { _ in nil },
+                performUpdate: { _, _ in
+                    throw NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "test error"])
+                },
+                relaunchApp: { _ in }
+            )
+        }
+        await store.send(.settings(.performUpdate))
+        await store.receive(\.performUpdate) {
+            $0.isUpdating = true
+            $0.settings.isUpdating = true
+            $0.updateError = nil
+        }
+        await store.receive(\.updateFailed) {
+            $0.isUpdating = false
+            $0.settings.isUpdating = false
+            $0.updateError = "test error"
         }
     }
 
