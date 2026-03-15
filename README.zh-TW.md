@@ -84,7 +84,7 @@ agentic-coding-usage-app/
 │   └── AgenticUsage/
 │       ├── Application/         # 應用程式生命週期
 │       ├── Configuration/       # 建構設定、密鑰
-│       ├── Features/            # MenuBar、Notification
+│       ├── Features/            # MenuBar、Notification、Settings
 │       ├── Services/            # 依賴注入（TCA）
 │       ├── Resources/           # 資源檔
 │       └── Utilities/
