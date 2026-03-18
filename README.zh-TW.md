@@ -39,6 +39,20 @@
 
 ## 安裝
 
+### Homebrew（推薦）
+
+```bash
+brew tap leoho0722/tap
+
+# CLI 工具
+brew install agentic
+
+# 選單列應用程式
+brew install --cask agentic-usage
+```
+
+### 手動下載
+
 從 [GitHub Releases](https://github.com/leoho0722/agentic-coding-usage-app/releases) 頁面下載最新的預建構二進位檔：
 
 - **AgenticUsage-v\<version\>.zip** — 選單列應用程式

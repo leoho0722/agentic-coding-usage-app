@@ -224,3 +224,59 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute SHA256 of release artifacts
+        if: steps.version.outputs.should_release == 'true'
+        id: sha
+        run: |
+          CLI_SHA=$(shasum -a 256 "${{ env.cli_zip }}" | awk '{print $1}')
+          APP_SHA=$(shasum -a 256 "${{ env.app_zip }}" | awk '{print $1}')
+          echo "cli_sha256=$CLI_SHA" >> "$GITHUB_OUTPUT"
+          echo "app_sha256=$APP_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Update Homebrew Tap
+        if: steps.version.outputs.should_release == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.new_tag }}"
+          VERSION_NUM="${VERSION#v}"
+          CLI_SHA="${{ steps.sha.outputs.cli_sha256 }}"
+          APP_SHA="${{ steps.sha.outputs.app_sha256 }}"
+
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/leoho0722/homebrew-tap.git" /tmp/homebrew-tap
+          cd /tmp/homebrew-tap
+
+          # 讀取目前版本（更新前）
+          OLD_VERSION=$(grep -m1 'version "' Formula/agentic.rb | sed 's/.*version "\(.*\)"/\1/')
+
+          # 保留前一版：刪除舊的版本化檔案，再從目前主檔建立新的版本化副本
+          if [ "$OLD_VERSION" != "$VERSION_NUM" ]; then
+            rm -f Formula/agentic@*.rb
+            rm -f Casks/agentic-usage@*.rb
+
+            # Formula 版本化副本（class 名稱需符合 Homebrew 慣例）
+            OLD_VER_NODOTS=$(echo "$OLD_VERSION" | tr -d '.')
+            cp Formula/agentic.rb "Formula/agentic@${OLD_VERSION}.rb"
+            sed -i '' "s/class Agentic </class AgenticAT${OLD_VER_NODOTS} </" "Formula/agentic@${OLD_VERSION}.rb"
+
+            # Cask 版本化副本（移除 livecheck，避免指向 latest）
+            cp Casks/agentic-usage.rb "Casks/agentic-usage@${OLD_VERSION}.rb"
+            sed -i '' "s/cask \"agentic-usage\"/cask \"agentic-usage@${OLD_VERSION}\"/" "Casks/agentic-usage@${OLD_VERSION}.rb"
+            sed -i '' '/livecheck do/,/^  end$/d' "Casks/agentic-usage@${OLD_VERSION}.rb"
+          fi
+
+          # 更新主 Formula：URL、版本與 SHA256
+          sed -i '' "s|/download/v[^/]*/AgenticCLI-v[^-]*-|/download/v${VERSION_NUM}/AgenticCLI-v${VERSION_NUM}-|" Formula/agentic.rb
+          sed -i '' "s/version \".*\"/version \"${VERSION_NUM}\"/" Formula/agentic.rb
+          sed -i '' "s/sha256 \".*\"/sha256 \"${CLI_SHA}\"/" Formula/agentic.rb
+
+          # 更新主 Cask：版本與 SHA256（URL 使用 #{version} 插值，會自動跟著更新）
+          sed -i '' "s/version \".*\"/version \"${VERSION_NUM}\"/" Casks/agentic-usage.rb
+          sed -i '' "s/sha256 \".*\"/sha256 \"${APP_SHA}\"/" Casks/agentic-usage.rb
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/ Casks/
+          git commit -m "Update to v${VERSION_NUM}"
+          git push origin main
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_PAT }}

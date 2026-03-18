@@ -39,6 +39,20 @@ Inspired by the open-source project [**OpenUsage**](https://github.com/robineber
 
 ## Installation
 
+### Homebrew (recommended)
+
+```bash
+brew tap leoho0722/tap
+
+# CLI tool
+brew install agentic
+
+# Menu bar app
+brew install --cask agentic-usage
+```
+
+### Manual Download
+
 Download the latest pre-built binaries from the [GitHub Releases](https://github.com/leoho0722/agentic-coding-usage-app/releases) page:
 
 - **AgenticUsage-v\<version\>.zip** — Menu bar app

@@ -115,6 +115,13 @@ CLI 使用 `swift-argument-parser`，進入點為 `AgenticCLI.swift`，子指令
 
 CD 會自動比對 `RELEASE_VERSION` 與最新 git tag，版本較新時建立對應的 git tag。
 
+### Homebrew 發行
+
+- Tap repo：`leoho0722/homebrew-tap`（`Formula/agentic.rb` + `Casks/agentic-usage.rb`）
+- CD 流程在建立 GitHub Release 後，自動計算 SHA256 並 push 更新至 tap repo
+- 需要 Actions secret `HOMEBREW_TAP_PAT`（Fine-grained PAT，scope 到 `leoho0722/homebrew-tap` 的 `Contents: Read and write`）
+- 使用者安裝：`brew tap leoho0722/tap && brew install agentic`（CLI）/ `brew install --cask agentic-usage`（App）
+
 ## SwiftUI 編碼規範
 
 撰寫或修改 View 時必須遵守以下規則：
