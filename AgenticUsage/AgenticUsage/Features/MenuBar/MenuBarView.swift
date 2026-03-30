@@ -18,6 +18,12 @@ struct MenuBarView: View {
     @AppStorage(.refreshInterval, defaultValue: .seconds30)
     private var refreshInterval: RefreshInterval
 
+    /// 捲動區域內容的實際高度，用於動態調整 ScrollView 框架
+    @State private var scrollContentHeight: CGFloat = 0
+
+    /// 捲動區域允許的最大高度
+    private let maxScrollHeight: CGFloat = 500
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // 頂部標題列：App 名稱 + 版本號
@@ -54,7 +60,13 @@ struct MenuBarView: View {
                         ComingSoonCardView(tool: tool)
                     }
                 }
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                    proxy.size.height
+                } action: { newHeight in
+                    scrollContentHeight = newHeight
+                }
             }
+            .frame(height: min(scrollContentHeight, maxScrollHeight))
 
             Divider()
 

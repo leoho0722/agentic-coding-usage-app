@@ -115,6 +115,10 @@ CLI 使用 `swift-argument-parser`，進入點為 `AgenticCLI.swift`，子指令
 
 CD 會自動比對 `RELEASE_VERSION` 與最新 git tag，版本較新時建立對應的 git tag。
 
+### Git Commit 訊息格式
+
+- commit description（body）必須使用**列點**（`-`）條列變更項目，不使用純段落敘述
+
 ### Homebrew 發行
 
 - Tap repo：`leoho0722/homebrew-tap`（`Formula/agentic.rb` + `Casks/agentic-usage.rb`）
