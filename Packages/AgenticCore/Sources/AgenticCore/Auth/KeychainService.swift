@@ -83,6 +83,7 @@ extension KeychainService {
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: serviceName,
                 kSecAttrAccount as String: key,
+                kSecUseDataProtectionKeychain as String: true,
             ]
             SecItemDelete(deleteQuery as CFDictionary)
             
@@ -92,6 +93,7 @@ extension KeychainService {
                 kSecAttrAccount as String: key,
                 kSecValueData as String: data,
                 kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+                kSecUseDataProtectionKeychain as String: true,
             ]
             let status = SecItemAdd(addQuery as CFDictionary, nil)
             guard status == errSecSuccess else {
@@ -105,6 +107,7 @@ extension KeychainService {
                 kSecAttrAccount as String: key,
                 kSecReturnData as String: true,
                 kSecMatchLimit as String: kSecMatchLimitOne,
+                kSecUseDataProtectionKeychain as String: true,
             ]
             var result: AnyObject?
             let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -123,6 +126,7 @@ extension KeychainService {
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: serviceName,
                 kSecAttrAccount as String: key,
+                kSecUseDataProtectionKeychain as String: true,
             ]
             let status = SecItemDelete(query as CFDictionary)
             guard status == errSecSuccess || status == errSecItemNotFound else {
