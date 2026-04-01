@@ -12,7 +12,7 @@ struct ErrorBannerView: View {
     let message: String
 
     /// 文字行數限制，預設為 1
-    var lineLimit: Int = 1
+    var lineLimit: Int = 2
 
     /// 關閉按鈕的動作
     let onDismiss: () -> Void

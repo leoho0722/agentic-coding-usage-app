@@ -18,6 +18,9 @@ struct MenuBarView: View {
     @AppStorage(.refreshInterval, defaultValue: .seconds30)
     private var refreshInterval: RefreshInterval
 
+    /// 捲動區域內容的實際高度，`nil` 表示尚未測量，不對 ScrollView 設定高度限制
+    @State private var scrollContentHeight: CGFloat?
+
     /// 捲動區域允許的最大高度
     private let maxScrollHeight: CGFloat = 500
 
@@ -57,9 +60,13 @@ struct MenuBarView: View {
                         ComingSoonCardView(tool: tool)
                     }
                 }
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                    proxy.size.height
+                } action: { newHeight in
+                    scrollContentHeight = newHeight
+                }
             }
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxHeight: maxScrollHeight)
+            .frame(height: scrollContentHeight.map { min($0, maxScrollHeight) })
 
             Divider()
 
@@ -69,6 +76,7 @@ struct MenuBarView: View {
             }
         }
         .frame(width: 320)
+        .fixedSize(horizontal: false, vertical: true)
         .task {
             await store.send(.onAppear).finish()
         }
