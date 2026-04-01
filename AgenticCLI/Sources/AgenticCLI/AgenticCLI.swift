@@ -12,7 +12,7 @@ struct AgenticCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "agentic",
         abstract: "Monitor your AI coding assistant usage (GitHub Copilot, Claude Code, Google Antigravity, and more).",
-        version: "1.9.6",
+        version: "1.9.7",
         subcommands: [LoginCommand.self, UsageCommand.self, UpdateCommand.self],
         defaultSubcommand: UsageCommand.self,
     )

@@ -250,21 +250,9 @@ jobs:
           # 讀取目前版本（更新前）
           OLD_VERSION=$(grep -m1 'version "' Formula/agentic.rb | sed 's/.*version "\(.*\)"/\1/')
 
-          # 保留前一版：刪除舊的版本化檔案，再從目前主檔建立新的版本化副本
-          if [ "$OLD_VERSION" != "$VERSION_NUM" ]; then
-            rm -f Formula/agentic@*.rb
-            rm -f Casks/agentic-usage@*.rb
-
-            # Formula 版本化副本（class 名稱需符合 Homebrew 慣例）
-            OLD_VER_NODOTS=$(echo "$OLD_VERSION" | tr -d '.')
-            cp Formula/agentic.rb "Formula/agentic@${OLD_VERSION}.rb"
-            sed -i '' "s/class Agentic </class AgenticAT${OLD_VER_NODOTS} </" "Formula/agentic@${OLD_VERSION}.rb"
-
-            # Cask 版本化副本（移除 livecheck，避免指向 latest）
-            cp Casks/agentic-usage.rb "Casks/agentic-usage@${OLD_VERSION}.rb"
-            sed -i '' "s/cask \"agentic-usage\"/cask \"agentic-usage@${OLD_VERSION}\"/" "Casks/agentic-usage@${OLD_VERSION}.rb"
-            sed -i '' '/livecheck do/,/^  end$/d' "Casks/agentic-usage@${OLD_VERSION}.rb"
-          fi
+          # 清除舊的版本化檔案（不再建立版本化副本，只保留主 Formula / Cask 指向最新版）
+          rm -f Formula/agentic@*.rb
+          rm -f Casks/agentic-usage@*.rb
 
           # 更新主 Formula：URL、版本與 SHA256
           sed -i '' "s|/download/v[^/]*/AgenticCLI-v[^-]*-|/download/v${VERSION_NUM}/AgenticCLI-v${VERSION_NUM}-|" Formula/agentic.rb
