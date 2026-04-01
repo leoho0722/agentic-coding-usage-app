@@ -15,33 +15,40 @@ public struct ClaudeUsageResponse: Codable, Sendable, Equatable {
     
     /// Opus 每週用量視窗（7 天，依方案而異）。
     public let sevenDayOpus: ClaudeUsagePeriod?
-    
+
+    /// Sonnet 每週用量視窗（7 天，依方案而異）。
+    public let sevenDaySonnet: ClaudeUsagePeriod?
+
     /// 額外用量資訊（超出方案內含配額的部分）。
     public let extraUsage: ClaudeExtraUsage?
-    
+
     enum CodingKeys: String, CodingKey {
         case fiveHour = "five_hour"
         case sevenDay = "seven_day"
         case sevenDayOpus = "seven_day_opus"
+        case sevenDaySonnet = "seven_day_sonnet"
         case extraUsage = "extra_usage"
     }
-    
+
     /// 以指定的屬性值初始化。
     ///
     /// - Parameters:
     ///   - fiveHour: 工作階段用量視窗（5 小時）。
     ///   - sevenDay: 每週用量視窗（7 天）。
     ///   - sevenDayOpus: Opus 每週用量視窗（7 天，依方案而異）。
+    ///   - sevenDaySonnet: Sonnet 每週用量視窗（7 天，依方案而異）。
     ///   - extraUsage: 額外用量資訊（超出方案內含配額的部分）。
     public init(
         fiveHour: ClaudeUsagePeriod? = nil,
         sevenDay: ClaudeUsagePeriod? = nil,
         sevenDayOpus: ClaudeUsagePeriod? = nil,
+        sevenDaySonnet: ClaudeUsagePeriod? = nil,
         extraUsage: ClaudeExtraUsage? = nil
     ) {
         self.fiveHour = fiveHour
         self.sevenDay = sevenDay
         self.sevenDayOpus = sevenDayOpus
+        self.sevenDaySonnet = sevenDaySonnet
         self.extraUsage = extraUsage
     }
 }
@@ -149,10 +156,16 @@ public struct ClaudeUsageSummary: Equatable, Sendable {
     
     /// Opus（7 天）使用率百分比（0 至 100），方案不包含時為 `nil`。
     public let opusUtilization: Int?
-    
+
     /// Opus 重置的 ISO 時間戳記。
     public let opusResetsAt: String?
-    
+
+    /// Sonnet（7 天）使用率百分比（0 至 100），方案不包含時為 `nil`。
+    public let sonnetUtilization: Int?
+
+    /// Sonnet 重置的 ISO 時間戳記。
+    public let sonnetResetsAt: String?
+
     /// 是否啟用額外用量。
     public let extraUsageEnabled: Bool
     
@@ -184,7 +197,10 @@ public struct ClaudeUsageSummary: Equatable, Sendable {
         
         self.opusUtilization = response.sevenDayOpus?.utilizationPercent
         self.opusResetsAt = response.sevenDayOpus?.resetsAt
-        
+
+        self.sonnetUtilization = response.sevenDaySonnet?.utilizationPercent
+        self.sonnetResetsAt = response.sevenDaySonnet?.resetsAt
+
         if let extra = response.extraUsage {
             self.extraUsageEnabled = extra.isEnabled
             self.extraUsageUsedCents = extra.usedCredits
@@ -200,7 +216,10 @@ public struct ClaudeUsageSummary: Equatable, Sendable {
     
     /// 是否包含 Opus 資料（依方案而異）。
     public var hasOpus: Bool { opusUtilization != nil }
-    
+
+    /// 是否包含 Sonnet 資料（依方案而異）。
+    public var hasSonnet: Bool { sonnetUtilization != nil }
+
     /// 是否應顯示額外用量區塊。
     public var hasExtraUsage: Bool { extraUsageEnabled }
     

@@ -30,7 +30,11 @@ public struct ClaudeOAuth: Codable, Sendable, Equatable {
     
     /// 訂閱類型字串（例如 `"pro"`、`"max"`、`"free"`）。
     public var subscriptionType: String?
-    
+
+    /// 速率限制層級字串（例如 `"default_claude_max_5x"`、`"default_claude_max_20x"`），
+    /// 用於區分相同 `subscriptionType` 下的不同方案等級。
+    public var rateLimitTier: String?
+
     /// 以指定的屬性值初始化。
     ///
     /// - Parameters:
@@ -38,16 +42,19 @@ public struct ClaudeOAuth: Codable, Sendable, Equatable {
     ///   - refreshToken: 重新整理權杖。
     ///   - expiresAt: 權杖到期時間，以 Unix 時間戳記（**毫秒**）表示。
     ///   - subscriptionType: 訂閱類型字串（例如 `"pro"`、`"max"`、`"free"`）。
+    ///   - rateLimitTier: 速率限制層級字串。
     public init(
         accessToken: String,
         refreshToken: String? = nil,
         expiresAt: Double? = nil,
-        subscriptionType: String? = nil
+        subscriptionType: String? = nil,
+        rateLimitTier: String? = nil
     ) {
         self.accessToken = accessToken
         self.refreshToken = refreshToken
         self.expiresAt = expiresAt
         self.subscriptionType = subscriptionType
+        self.rateLimitTier = rateLimitTier
     }
     
     /// 判斷權杖是否已過期或即將過期（在 `bufferMs` 緩衝時間內）。

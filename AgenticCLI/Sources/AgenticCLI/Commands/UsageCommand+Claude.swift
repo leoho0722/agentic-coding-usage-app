@@ -30,6 +30,13 @@ extension UsageCommand {
             print("  [Claude Code] Refresh token expired. Please re-login via terminal: claude login")
             return
         }
+
+        // 原始 JSON 輸出模式
+        if raw {
+            try await printClaudeRawJSON(accessToken: refreshed.accessToken)
+            return
+        }
+
         let response: ClaudeUsageResponse
         do {
             response = try await claudeClient.fetchUsage(refreshed.accessToken)
@@ -38,11 +45,59 @@ extension UsageCommand {
             return
         }
         let summary = ClaudeUsageSummary(
-            plan: ClaudePlan(from: refreshed.subscriptionType),
+            plan: ClaudePlan(from: refreshed.subscriptionType, rateLimitTier: refreshed.rateLimitTier),
             response: response
         )
 
         printClaudeDisplay(summary: summary)
+    }
+
+    /// 輸出 Claude Code 憑證檔案與用量 API 的原始 JSON 資料。
+    ///
+    /// 用於調查 API 回應中是否包含可區分 Max 5x / Max 20x 的額外欄位。
+    ///
+    /// - Parameter accessToken: 已重新整理的存取權杖。
+    private func printClaudeRawJSON(accessToken: String) async throws {
+        print()
+        print("  Claude Code Raw JSON")
+        print()
+
+        // 1. 憑證原始 JSON（遮蔽敏感欄位）
+        print("  ── Credentials ──")
+        let credentialData = loadRawCredentialData()
+        if let data = credentialData,
+           var jsonObject = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            // 遮蔽敏感欄位
+            if var oauth = jsonObject["claudeAiOauth"] as? [String: Any] {
+                if oauth["accessToken"] != nil { oauth["accessToken"] = "***REDACTED***" }
+                if oauth["refreshToken"] != nil { oauth["refreshToken"] = "***REDACTED***" }
+                jsonObject["claudeAiOauth"] = oauth
+            }
+            if let redactedData = try? JSONSerialization.data(
+                withJSONObject: jsonObject,
+                options: [.prettyPrinted, .sortedKeys]
+            ) {
+                printPrettyJSON(redactedData)
+            }
+        } else {
+            print("  (not found)")
+        }
+        print()
+
+        // 2. 用量 API 原始 JSON
+        print("  ── Usage API Response (\(ClaudeConstants.usageURL)) ──")
+        let request = RequestBuilder(urlString: ClaudeConstants.usageURL)
+            .method(.get)
+            .bearerToken(accessToken)
+            .header("anthropic-beta", "oauth-2025-04-20")
+            .build()
+        do {
+            let (_, data) = try await HTTPClient().fetchRaw(request)
+            printPrettyJSON(data)
+        } catch {
+            print("  Error: \(error.localizedDescription)")
+        }
+        print()
     }
 
     /// 格式化並印出 Claude Code 的用量顯示內容。
@@ -86,6 +141,15 @@ extension UsageCommand {
             }
         }
 
+        // Sonnet 模型用量（7 天週期），僅在有資料時顯示
+        if let pct = summary.sonnetUtilization {
+            printProgressBar(label: "Sonnet  (7d)", percentage: pct, barWidth: barWidth)
+            if let resetsAt = summary.sonnetResetsAt {
+                let countdown = ClaudeUsagePeriod(utilization: Double(pct), resetsAt: resetsAt).resetCountdown ?? "?"
+                print("               Resets in: \(countdown)")
+            }
+        }
+
         // 額外用量（超出基本配額的費用）
         if summary.hasExtraUsage,
            let used = summary.extraUsageUsedDollars,
@@ -94,5 +158,35 @@ extension UsageCommand {
         }
 
         print()
+    }
+
+    /// 從檔案或 Keychain 載入原始憑證 JSON 資料（不經 Codable 解碼）。
+    ///
+    /// 優先嘗試從 `~/.claude/.credentials.json` 讀取，
+    /// 若不存在則嘗試從 macOS 鑰匙圈載入。
+    ///
+    /// - Returns: 原始 JSON 資料，若無可用來源則回傳 `nil`。
+    private func loadRawCredentialData() -> Data? {
+        // 嘗試從檔案載入
+        let credentialPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(ClaudeConstants.credentialRelativePath)
+        if let fileData = FileManager.default.contents(atPath: credentialPath.path) {
+            return fileData
+        }
+
+        // 嘗試從 Keychain 載入
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: ClaudeConstants.keychainService,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecSuccess, let data = result as? Data {
+            return data
+        }
+
+        return nil
     }
 }

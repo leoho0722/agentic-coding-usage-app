@@ -42,6 +42,8 @@ struct ClaudeStatusLabelView: View {
         case .free: .gray
         case .pro: .orange
         case .max: .purple
+        case .max5x: .indigo
+        case .max20x: .pink
         }
     }
 }

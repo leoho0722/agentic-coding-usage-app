@@ -47,6 +47,17 @@ struct ClaudeUsageSummaryView: View {
                 )
             }
 
+            // Sonnet 模型用量（7 天窗口），僅在有資料時顯示
+            if let pct = summary.sonnetUtilization {
+                ProgressRowView(
+                    label: "Sonnet (7d)",
+                    usedPercent: pct,
+                    countdown: summary.sonnetResetsAt.flatMap {
+                        ClaudeUsagePeriod(utilization: Double(pct), resetsAt: $0).resetCountdown
+                    }
+                )
+            }
+
             // 額外用量，僅在啟用時顯示（使用 FormatStyle API 格式化貨幣）
             if summary.hasExtraUsage {
                 HStack {

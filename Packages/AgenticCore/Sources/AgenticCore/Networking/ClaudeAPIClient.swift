@@ -202,7 +202,8 @@ extension ClaudeAPIClient {
                     accessToken: refreshResponse.accessToken,
                     refreshToken: refreshResponse.refreshToken ?? current.refreshToken,
                     expiresAt: expiresAtMs,
-                    subscriptionType: current.subscriptionType
+                    subscriptionType: current.subscriptionType,
+                    rateLimitTier: current.rateLimitTier
                 )
                 
                 // 將更新後的憑證回寫至檔案

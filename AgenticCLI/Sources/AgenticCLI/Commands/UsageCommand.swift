@@ -20,6 +20,10 @@ struct UsageCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Tool to show usage for: copilot, claude, codex, antigravity, or all (default: all).")
     var tool: String = "all"
 
+    /// 是否輸出原始 JSON 資料（用於開發調試）。
+    @Flag(name: .long, help: "Dump raw JSON from credentials and API response (for debugging).")
+    var raw: Bool = false
+
     /// 依據篩選條件查詢並顯示各工具的用量資訊。
     ///
     /// 依序查詢 Copilot、Claude Code、Codex 的用量。

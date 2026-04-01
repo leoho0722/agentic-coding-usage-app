@@ -83,7 +83,7 @@ struct ClaudeCodeFeature {
                     let refreshed = try await claudeClient.refreshTokenIfNeeded(credentials)
                     let response = try await claudeClient.fetchUsage(refreshed.accessToken)
                     let summary = ClaudeUsageSummary(
-                        plan: ClaudePlan(from: refreshed.subscriptionType),
+                        plan: ClaudePlan(from: refreshed.subscriptionType, rateLimitTier: refreshed.rateLimitTier),
                         response: response
                     )
                     await send(.usageResponse(summary, refreshed))
@@ -114,7 +114,7 @@ struct ClaudeCodeFeature {
                     let refreshed = try await claudeClient.refreshTokenIfNeeded(credentials)
                     let response = try await claudeClient.fetchUsage(refreshed.accessToken)
                     let summary = ClaudeUsageSummary(
-                        plan: ClaudePlan(from: refreshed.subscriptionType),
+                        plan: ClaudePlan(from: refreshed.subscriptionType, rateLimitTier: refreshed.rateLimitTier),
                         response: response
                     )
                     await send(.usageResponse(summary, refreshed))
@@ -216,7 +216,7 @@ struct ClaudeCodeFeature {
                     let refreshed = try await claudeClient.refreshTokenIfNeeded(cached)
                     let response = try await claudeClient.fetchUsage(refreshed.accessToken)
                     let summary = ClaudeUsageSummary(
-                        plan: ClaudePlan(from: refreshed.subscriptionType),
+                        plan: ClaudePlan(from: refreshed.subscriptionType, rateLimitTier: refreshed.rateLimitTier),
                         response: response
                     )
                     await send(.usageResponse(summary, refreshed))
