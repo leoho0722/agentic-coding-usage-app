@@ -20,8 +20,8 @@ cd AgenticCLI && swift build -c release --arch arm64
 # 核心函式庫
 cd Packages/AgenticCore && swift build
 
-# 選單列應用程式（需先產生 Secrets.xcconfig）
-cd AgenticUsage && cp AgenticUsage/Configuration/Secrets.xcconfig.template AgenticUsage/Configuration/Secrets.xcconfig
+# 選單列應用程式（需先產生 Secrets.xcconfig，若已存在則跳過以免覆寫真實 secrets）
+cd AgenticUsage && cp -n AgenticUsage/Configuration/Secrets.xcconfig.template AgenticUsage/Configuration/Secrets.xcconfig
 cd AgenticUsage && xcodebuild build -project AgenticUsage.xcodeproj -scheme AgenticUsage -configuration Release
 ```
 
