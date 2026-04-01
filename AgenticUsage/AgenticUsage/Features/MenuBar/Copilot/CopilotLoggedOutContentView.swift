@@ -17,6 +17,13 @@ struct CopilotLoggedOutContentView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
+            // 登入失敗時的錯誤訊息橫幅
+            if let error = store.copilot.errorMessage {
+                ErrorBannerView(message: error, lineLimit: 3) {
+                    store.send(.copilot(.dismissError))
+                }
+            }
+
             Button("Connect with GitHub") {
                 store.send(.copilot(.loginButtonTapped))
             }
